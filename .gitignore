@@ -1,3 +1,5 @@
 FabricSim.VC.VC.opendb
 *.opendb
 *.vs
+Debug
+FabricSim/Debug
