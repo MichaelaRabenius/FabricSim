@@ -192,22 +192,6 @@ void dumpInfo(void)
 static GLenum lastError = 0;
 static char lastErrorFunction[1024] = "";
 
-/* report GL errors, if any, to stderr */
-//void printError(const char *functionName)
-//{
-//	GLenum error;
-//	while ((error = glGetError()) != GL_NO_ERROR)
-//	{
-//		if ((lastError != error) || (strcmp(functionName, lastErrorFunction)))
-//		{
-//			fprintf(stderr, "GL error 0x%X detected in %s\n", error, functionName);
-//			strcpy(lastErrorFunction, functionName);
-//			lastError = error;
-//		}
-//	}
-//}
-
-
 
 
 void CHECK_FRAMEBUFFER_STATUS()

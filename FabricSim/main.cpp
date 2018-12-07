@@ -29,9 +29,10 @@ const unsigned int SCR_HEIGHT = 800;
 //2 for positions, 2 for velocites
 FBOstruct *fbo1, *fbo2, *fbo3, *fbo4;
 
-Shader plainShader, velocityShader, positionShader;
+Shader plainShader, velocityShader, positionShader, testShader;
 
 
+/*** Screen quad ***/
 float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
 						 // positions   // texCoords
 	-1.0f,  1.0f,  0.0f, 1.0f,
@@ -43,6 +44,8 @@ float quadVertices[] = { // vertex attributes for a quad that fills the entire s
 	1.0f,  1.0f,  1.0f, 1.0f
 };
 
+GLuint quadVAO;
+
 
 /***** The size of the fabric in particles *****/
 GLsizei num_particles_width = 20;
@@ -52,7 +55,10 @@ GLsizei num_particles_height = 20;
 /***** Function Declarations *****/
 GLuint generateTextureFromData(GLfloat * data);
 
-void updatePositions();
+void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOstruct * vel2);
+
+void drawTextureToFBO(FBOstruct *fbo, GLuint texture);
+void drawScreenQuad(Shader shader);
 
 
 int main()
@@ -90,7 +96,7 @@ int main()
 
 	/********** set up screen quad **********/
 	// screen quad VAO
-	GLuint quadVAO, quadVBO;
+	GLuint quadVBO;
 	glGenVertexArrays(1, &quadVAO);
 	glGenBuffers(1, &quadVBO);
 	glBindVertexArray(quadVAO);
@@ -121,11 +127,24 @@ int main()
 	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
 	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
 	positionShader.init("shaders/position.vert", "shaders/position.frag");
+	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
 	
 	//Here is one way we can bind a texture to the shader
 	//This will probably be more relevant when the shader needs more than one texture
 	//plainShader.use();
 	//plainShader.setInt("screenTexture", 0);
+
+	//Set textures to shaders
+	velocityShader.use();
+	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
+
+
+	positionShader.use();
+	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
+	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
+	//glBindTexture(GL_TEXTURE_2D, position_texture1); //just for testing: bind the position texture to the screen quad
+
+
 
 
 	/*********** set up fram buffer objects *****************/
@@ -134,9 +153,17 @@ int main()
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo4 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 
+	drawTextureToFBO(fbo1, position_texture1);
+	drawTextureToFBO(fbo2, position_texture2);
+	drawTextureToFBO(fbo3, velocity_texture1);
+	drawTextureToFBO(fbo4, velocity_texture2);
+	useFBO(0L, fbo1, 0L);
+
 	
 	// uncomment this call to draw in wireframe polygons.
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	int flip = 0;
 
 	// render loop
 	// -----------
@@ -146,14 +173,30 @@ int main()
 		// -----
 		processInput(window);
 
-				
-
+		/*** TEST: Apply a texture from fbo to fabric.***/
+		testShader.use();
 
 		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		useFBO(0L, fbo1, 0L);
 
-		f.render();
+		f.render(); 
+
+		////Every other turn, ping pong to the other buffer
+		//if (flip == 0) {
+		//	updatePositions(fbo1, fbo2, fbo3, fbo4);
+		//	flip = 1;
+		//	useFBO(0L, fbo1, 0L);
+		//}
+		//else {
+		//	updatePositions(fbo2, fbo1, fbo4, fbo3);
+		//	flip = 0;
+		//	useFBO(0L, fbo2, 0L);
+		//}
+
+		///*useFBO(fbo1, fbo2, 0L);
+		//f.render();*/
 
 		//useFBO(0L, fbo1, 0L);
 
@@ -197,16 +240,42 @@ GLuint generateTextureFromData(GLfloat * data) {
 	return textureID;
 }
 
+// Draw a texture to the fbo (for initialization purposes)
+void drawTextureToFBO(FBOstruct *fbo, GLuint texture) {
+	useFBO(fbo, 0L, 0L); // Render to the fbo;
+
+	plainShader.use();
+	glBindTexture(GL_TEXTURE_2D, texture); //just for testing: bind the position texture to the screen quad
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void drawScreenQuad(Shader shader) {
+	shader.use();
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
 
 //Here we do pingponging
-void updatePositions(GLuint pos1, GLuint pos2, GLuint vel1, GLuint vel2) {
+void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOstruct * vel2) {
 
 	// 1. render position_texture1 to position_texture2, with velocity_texture1 as additional input.
-	//useFBO(fbo1, 0L, 0L);
+	positionShader.use();
+	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
+	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
 
+	useFBO(pos2, pos1, vel1); //Render to fbo1, without any input
+	
+	drawScreenQuad(positionShader); //draw the texture
 
 	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
 	//useFBO(fbo2, fb01, 0L);
+	velocityShader.use();
+	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
+
+	useFBO(vel2, vel1, 0L);
+	drawScreenQuad(velocityShader);
 
 	// 3. update position 
 
