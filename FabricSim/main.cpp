@@ -107,9 +107,26 @@ int main()
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
+	/*********** Model view and projection matrices ************/
+
+
+
+	/************** Create and compile shaders *****************/
+	//Shader plainShader("plaintextureshader.vert", "plaintextureshader.frag");
+	plainShader.init("shaders/plaintextureshader.vert", "shaders/plaintextureshader.frag");
+	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
+	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
+	positionShader.init("shaders/position.vert", "shaders/position.frag");
+	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
+
+	//Here is one way we can bind a texture to the shader
+	//This will probably be more relevant when the shader needs more than one texture
+	//plainShader.use();
+	//plainShader.setInt("screenTexture", 0);
+
 	
 	/************** Create Fabric and position textures *****************/
-	Fabric f{ 1, 1, num_particles_width, num_particles_height };
+	Fabric f{ 1.5, 1.5, num_particles_width, num_particles_height };
 	f.Create_Fabric();
 
 	//We must create textures from the position data in Fabric.
@@ -119,32 +136,6 @@ int main()
 	//Create textures containing velocities, initially zero
 	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
 	GLuint velocity_texture2 = generateTextureFromData(f.velocityarray);
-
-	
-	/************** Create and compile shaders *****************/
-	//Shader plainShader("plaintextureshader.vert", "plaintextureshader.frag");
-	plainShader.init("shaders/plaintextureshader.vert", "shaders/plaintextureshader.frag");
-	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
-	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
-	positionShader.init("shaders/position.vert", "shaders/position.frag");
-	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
-	
-	//Here is one way we can bind a texture to the shader
-	//This will probably be more relevant when the shader needs more than one texture
-	//plainShader.use();
-	//plainShader.setInt("screenTexture", 0);
-
-	//Set textures to shaders
-	velocityShader.use();
-	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
-
-
-	positionShader.use();
-	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
-	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
-	//glBindTexture(GL_TEXTURE_2D, position_texture1); //just for testing: bind the position texture to the screen quad
-
-
 
 
 	/*********** set up fram buffer objects *****************/
@@ -173,27 +164,19 @@ int main()
 		// -----
 		processInput(window);
 
-		/*** TEST: Apply a texture from fbo to fabric.***/
-		testShader.use();
+		
 
-		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		useFBO(0L, fbo1, 0L);
-
-		f.render(); 
-
-		////Every other turn, ping pong to the other buffer
-		//if (flip == 0) {
-		//	updatePositions(fbo1, fbo2, fbo3, fbo4);
-		//	flip = 1;
-		//	useFBO(0L, fbo1, 0L);
-		//}
-		//else {
-		//	updatePositions(fbo2, fbo1, fbo4, fbo3);
-		//	flip = 0;
-		//	useFBO(0L, fbo2, 0L);
-		//}
+		//Every other turn, ping pong to the other buffer
+		if (flip == 0) {
+			updatePositions(fbo1, fbo2, fbo3, fbo4);
+			flip = 1;
+			useFBO(0L, fbo1, 0L);
+		}
+		else {
+			updatePositions(fbo2, fbo1, fbo4, fbo3);
+			flip = 0;
+			useFBO(0L, fbo2, 0L);
+		}
 
 		///*useFBO(fbo1, fbo2, 0L);
 		//f.render();*/
@@ -204,6 +187,30 @@ int main()
 		////glBindTexture(GL_TEXTURE_2D, position_texture1); //just for testing: bind the position texture to the screen quad
 		//glBindVertexArray(quadVAO);
 		//glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		/*** TEST: Apply a texture from fbo to fabric.***/
+		testShader.use();
+
+		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		useFBO(0L, fbo1, 0L);
+
+		glm::mat4 model(1.0f);
+		glm::mat4 view(1.0f);
+		glm::mat4 projection(1.0f);
+		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+		model = view * model;
+		projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+		// retrieve the matrix uniform locations
+		unsigned int modelLoc = glGetUniformLocation(testShader.ID, "modelview");
+		// pass them to the shaders
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		testShader.setMat4("projection", projection);
+
+		f.render();
 
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)

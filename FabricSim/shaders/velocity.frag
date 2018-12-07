@@ -16,9 +16,9 @@ void main()
     
     // We're gonna do a test first with a simple acceleration
     //float mass = 1.0f;
-    float gravity = 9.82;
+    float gravity = 0.01;
     vec3 acceleration = vec3(0.0f, -1.0f, 0.0f) * gravity; //simple gravitational pull
-    
+
     vec3 newVelocity = oldVelocity + acceleration * dt;
 
     FragColor = vec4(newVelocity, 1.0);
