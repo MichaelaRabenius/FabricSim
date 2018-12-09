@@ -126,7 +126,7 @@ int main()
 
 	
 	/************** Create Fabric and position textures *****************/
-	Fabric f{ 1.5, 1.5, num_particles_width, num_particles_height };
+	Fabric f{ 2, 2, num_particles_width, num_particles_height };
 	f.Create_Fabric();
 
 	//We must create textures from the position data in Fabric.
@@ -189,6 +189,7 @@ int main()
 		//glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		/*** TEST: Apply a texture from fbo to fabric.***/
+		//Update the positions of the fabric
 		testShader.use();
 
 		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
@@ -280,11 +281,10 @@ void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOst
 	//useFBO(fbo2, fb01, 0L);
 	velocityShader.use();
 	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
+	glUniform1i(glGetUniformLocation(velocityShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
 
-	useFBO(vel2, vel1, 0L);
+	useFBO(vel2, vel1, pos2);
 	drawScreenQuad(velocityShader);
-
-	// 3. update position 
 
 }
 
