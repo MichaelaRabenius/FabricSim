@@ -50,12 +50,12 @@ void main()
 
     //External forces
     vec3 wind = vec3(0.3f, 0.0f, 0.3f); // for testing only
-    vec3 gravity = vec3(0.0f, -0.001f, 0.0f); //simple gravitational pull
+    vec3 gravity = vec3(0.0f, -0.01f, 0.0f); //simple gravitational pull
 
-    vec3 acceleration = ( internal_force + gravity) / mass;
+    vec3 acceleration = (internal_force + gravity) / mass;
     
     // integrate
-    vec3 newVelocity = oldVelocity + gravity * dt;
+    vec3 newVelocity = oldVelocity + acceleration * dt;
 
     FragColor = vec4(newVelocity, 1.0);
 
