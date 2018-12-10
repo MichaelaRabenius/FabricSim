@@ -235,6 +235,7 @@ int main()
 
 
 		f.render();
+		//drawScreenQuad(plainShader);
 
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -264,7 +265,7 @@ GLuint generateTextureFromData(GLfloat * data) {
 	glGenTextures(1, &textureID);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, num_particles_width, num_particles_height, 0, GL_RGB, GL_FLOAT, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, num_particles_width, num_particles_height, 0, GL_RGBA, GL_FLOAT, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 

@@ -20,6 +20,6 @@ void main()
 {   
     vec3 pos = texture(positionTexture, in_TexCoords).rgb;
     TexCoords = in_TexCoords;
-    gl_Position = projection * view * model * vec4(pos, 1.0f); // THIS IS WHAT SHALL HAPPEN IN THE FUTURE
-    //gl_Position = projection * view * model * vec4(in_Position, 1.0f); // FOR NOW, WE SIMPLY TEST THE TEXTURE IN THE FRAGMENT SHADER
+    //gl_Position = projection * view * model * vec4(pos, 1.0f); // THIS IS WHAT SHALL HAPPEN IN THE FUTURE
+    gl_Position = projection * view * model * vec4(in_Position, 1.0f); // FOR NOW, WE SIMPLY TEST THE TEXTURE IN THE FRAGMENT SHADER
 }  

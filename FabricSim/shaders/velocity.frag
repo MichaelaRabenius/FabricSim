@@ -25,7 +25,8 @@ void main()
     float dt = 0.01;
 
     //Same question, is our texture vec3 or vec4
-    vec3 oldVelocity = texture(oldVelocityTexture, TexCoords).rgb;
+    vec4 velocityData = texture(oldVelocityTexture, TexCoords);
+    vec3 oldVelocity = velocityData.rgb;
     vec3 pos = texture(positionTexture, TexCoords - vec2(texture_offset, 0.0f)).rgb;
 
     // In reality, the fabric is going to be affected by both internal and external forces.
@@ -52,12 +53,16 @@ void main()
     vec3 wind = vec3(0.3f, 0.0f, 0.3f); // for testing only
     vec3 gravity = vec3(0.0f, -0.01f, 0.0f); //simple gravitational pull
 
-    vec3 acceleration = (internal_force + gravity) / mass;
+    vec3 acceleration = (gravity) / mass;
     
+    if(velocityData.w == 1.0) {
+        acceleration = vec3(0.0f, 0.0f, 0.0f);
+    }
+
     // integrate
     vec3 newVelocity = oldVelocity + acceleration * dt;
 
-    FragColor = vec4(newVelocity, 1.0);
+    FragColor = vec4(newVelocity, velocityData.w);
 
 }
 

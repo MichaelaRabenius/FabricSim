@@ -33,8 +33,8 @@ void Fabric::Create_Fabric()
 	vertexarray = new GLfloat[8 * nverts]; // we need 8 values for position, normal and texture coordinates
 	indexarray = new GLuint[3 * ntris];
 
-	positionarray = new GLfloat[3 * nverts];
-	velocityarray = new GLfloat[3 * nverts];
+	positionarray = new GLfloat[4 * nverts];
+	velocityarray = new GLfloat[4 * nverts];
 
 	int idx = 0;
 	int idx2 = 0;
@@ -61,8 +61,8 @@ void Fabric::Create_Fabric()
 			vertexarray[idx + 5] = 1.0f;
 
 			//Insert texture coordinates
-			vertexarray[idx + 6] = x / (float)num_particles_width;
-			vertexarray[idx + 7] = y / (float)num_particles_height;
+			vertexarray[idx + 6] = x / (float)(num_particles_width - 1);
+			vertexarray[idx + 7] = y / (float)(num_particles_height - 1);
 			
 			int a = 0;
 			//Insert initial velocities for each particle
@@ -75,10 +75,18 @@ void Fabric::Create_Fabric()
 			/*velocityarray[idx + 3] = x / (float)num_particles_width;
 			velocityarray[idx + 4] = y / (float)num_particles_height;*/
 
+			if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
+				positionarray[idx2 + 3] = 1.0f;
+				velocityarray[idx2 + 3] = 1.0f;
+			}
+			else {
+				positionarray[idx2 + 3] = 0.0f;
+				velocityarray[idx2 + 3] = 0.0f;
+			}
 
 
 			idx += 8;
-			idx2 += 3;
+			idx2 += 4;
 
 		}
 	}
