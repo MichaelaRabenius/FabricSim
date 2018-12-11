@@ -40,11 +40,11 @@ void Fabric::Create_Fabric()
 	int idx2 = 0;
 	//particles.resize(num_particles_height * num_particles_width);
 	//Create the particles
-	for (int x = 0; x < num_particles_width; ++x) {
-		for (int y = 0; y < num_particles_height; ++y) {
+	for (int y = 0; y < num_particles_height; ++y) {
+		for (int x = 0; x < num_particles_width; ++x) {
 
 			// Calculate the position of the new particle.
-			glm::vec3 position = glm::vec3(width * (x / (float)num_particles_width) - 0.5f, height * (y / (float)num_particles_height) - 0.5f, 0.0f);
+			glm::vec3 position = glm::vec3(x * width / ((float)num_particles_width - 1), y * height / ((float)num_particles_height - 1), 0.0f);
 			
 			//Insert vertex positions
 			vertexarray[idx] = position.x;
@@ -61,8 +61,8 @@ void Fabric::Create_Fabric()
 			vertexarray[idx + 5] = 1.0f;
 
 			//Insert texture coordinates
-			vertexarray[idx + 6] = x / (float)(num_particles_width - 1);
-			vertexarray[idx + 7] = y / (float)(num_particles_height - 1);
+			vertexarray[idx + 6] = x / (float)(num_particles_width) + (1 / (float)(num_particles_width * 2));
+			vertexarray[idx + 7] = y / (float)(num_particles_height) + (1 / (float)(num_particles_height * 2));
 			
 			int a = 0;
 			//Insert initial velocities for each particle
@@ -92,20 +92,38 @@ void Fabric::Create_Fabric()
 	}
 
 	idx = 0;
-	for (int x = 0; x < num_particles_width - 1; x++)
+	for (int y = 0; y < num_particles_height - 1; y++)
 	{
-		for (int y = 0; y < num_particles_height - 1; y++)
+		for (int x = 0; x < num_particles_width - 1; x++)
 		{
 
-			int first = y * num_particles_height + x;
-			indexarray[idx++] = y * num_particles_height + x;
-			indexarray[idx++] = y * num_particles_height + x + 1;
-			indexarray[idx++] = (y + 1) * num_particles_height + x + 1;
+			//first triangle
+			//3.  O
+			//	  |\
+			//	  | \
+			//	  |  \
+			//1.  O___O 2.
 
-			indexarray[idx++] = y * num_particles_height + x;
-			indexarray[idx++] = (y + 1) * num_particles_height + x + 1;
-			indexarray[idx++] = (y + 1) * num_particles_height + x;
-			
+			indexarray[idx++] = y * num_particles_height + x; //lower left
+			indexarray[idx++] = y * num_particles_height + x + 1; // lower right
+			indexarray[idx++] = (y + 1) * num_particles_height + x; // upper left
+
+			//secon triangle
+			//	1. O___O 3.
+			//		\  |
+			//		 \ |
+			//		  \|
+			//		2. O
+			//
+
+			int a = y * num_particles_height + x + 1;
+			int b = (y + 1) * num_particles_height + x + 1;
+			int c = (y + 1) * num_particles_height + x;
+
+			indexarray[idx++] = y * num_particles_height + x + 1; //lower right
+			indexarray[idx++] = (y + 1) * num_particles_height + x + 1; // upper right
+			indexarray[idx++] = (y + 1) * num_particles_height + x; // upper left
+
 		}
 	}
 

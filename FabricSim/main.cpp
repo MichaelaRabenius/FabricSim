@@ -16,6 +16,8 @@
 
 #include "GL_utilities.h"
 #include <iostream>
+#include <iomanip>
+#include <string>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -170,6 +172,46 @@ int main()
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	int idx = 0;
+	int idx2 = 0;
+	int idx3 = 0;
+	for (int i = 0; i < num_particles_height * num_particles_width; i++) {
+		//std::cout << "positionarray: " << f.positionarray[idx3] << " ";
+		//std::cout << f.positionarray[idx3 + 1] << " ";
+		////std::cout << f.positionarray[idx + 2] << " ";
+		//std::cout << f.positionarray[idx3 + 2] << std::endl;
+
+		//std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
+		//std::cout << f.velocityarray[idx3 + 1] << " ";
+		////std::cout << f.velocityarray[idx + 2] << " ";
+		//std::cout << f.velocityarray[idx3 + 2] << std::endl;
+
+		/*std::cout << "coordinates: ";
+		std::cout << f.vertexarray[idx] << " ";
+		std::cout << f.vertexarray[idx + 1] << " ";
+		std::cout << f.vertexarray[idx + 2] << " ";
+		std::cout << "             texture coordinates: ";
+		std::cout << f.vertexarray[idx + 6] << " ";
+		std::cout << f.vertexarray[idx + 7] << std::endl;
+
+
+
+		idx += 8;*/
+
+		//std::string pos = "Position " + std::to_string(i) + ": " + std::to_string(f.vertexarray[idx]) + " " + std::to_string(f.vertexarray[idx+1]) + " " + std::to_string(f.vertexarray[idx + 2]);
+		//std::string tri = "Triangle: "+ std::to_string(f.indexarray[idx2]) + " " + std::to_string(f.indexarray[idx2 + 1]) + " " + std::to_string(f.indexarray[idx2 + 2]);
+		//std::string tex = "Texture: " + std::to_string(f.vertexarray[idx + 6]) + " " + std::to_string(f.vertexarray[idx + 7]);
+		//
+	
+		//std::cout << std::left << std::setw(45) << pos << std::setw(40) << std::left << tri << std::setw(40) << tex << std::endl;
+
+		//idx += 8;
+		//idx2 += 3;
+		//idx3 += 4;
+	}
+
+
+
 	int flip = 0;
 
 	// render loop
@@ -214,11 +256,11 @@ int main()
 		/*** TEST: Apply a texture from fbo to fabric.***/
 		//Update the positions of the fabric
 		testShader.use();
-
+		
 		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		useFBO(0L, fbo1, 0L);
+		//useFBO(0L, fbo1, 0L);
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -261,7 +303,7 @@ int main()
 
 // generate texture
 GLuint generateTextureFromData(GLfloat * data) {
-	GLuint textureID = 0;
+	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureID);
