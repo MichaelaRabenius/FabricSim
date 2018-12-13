@@ -64,6 +64,8 @@ GLuint quadVAO;
 
 
 /***** The size of the fabric in particles *****/
+float fabric_width = 1;
+float fabric_height = 1;
 GLsizei num_particles_width = 20;
 GLsizei num_particles_height = 20;
 
@@ -144,7 +146,7 @@ int main()
 
 	
 	/************** Create Fabric and position textures *****************/
-	Fabric f{ 1, 1, num_particles_width, num_particles_height };
+	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
 	f.Create_Fabric();
 
 	//We must create textures from the position data in Fabric.
@@ -155,8 +157,23 @@ int main()
 	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
 	GLuint velocity_texture2 = generateTextureFromData(f.velocityarray);
 
+	/***** Pass texture offsets to velocity shader *******/
+	float offset_x = 1 / (float)num_particles_width;
+	float offset_y = 1 / (float)num_particles_height;
+	float rest_dist = fabric_width / (float)(num_particles_width - 1);
 
-	/*********** set up fram buffer objects *****************/
+	velocityShader.use();
+	unsigned int xLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_x");
+	glUniform1f(xLoc, offset_x);
+
+	unsigned int yLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_y");
+	glUniform1f(yLoc, offset_y);
+
+	unsigned int rLoc = glGetUniformLocation(velocityShader.ID, "rest_dist");
+	glUniform1f(rLoc, rest_dist);
+
+
+	/*********** set up frame buffer objects *****************/
 	fbo1 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);

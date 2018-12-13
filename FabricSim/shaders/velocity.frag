@@ -7,11 +7,13 @@ uniform sampler2D oldVelocityTexture;
 uniform sampler2D positionTexture;
 //uniform float timestep;
 
-float dist = 0.05f;
-
 // texture size is 800x800, thus the offset to a neighboring texel should be 1/800?
 //float texture_offset = 0.00125f;
-float texture_offset = 0.05f; 
+uniform float texture_offset_x;
+uniform float texture_offset_y; 
+uniform float rest_dist;
+
+float texture_offset = 0.05;
 
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces();
@@ -50,10 +52,10 @@ void main()
     vec3 internal_force = calculateInternalForces();
 
     //External forces
-    vec3 wind = vec3(0.3f, 0.0f, 0.3f); // for testing only
+    vec3 wind = vec3(0.03f, 0.0f, 0.3f); // for testing only
     vec3 gravity = vec3(0.0f, -0.01f, 0.0f); //simple gravitational pull
 
-    vec3 acceleration = (gravity) / mass;
+    vec3 acceleration = (gravity + internal_force) / mass;
     
     if(velocityData.w == 1.0) {
         acceleration = vec3(0.0f, 0.0f, 0.0f);
@@ -66,6 +68,18 @@ void main()
 
 }
 
+vec3 getForceFromTexture(vec3 accumulated_force, vec3 current_pos, vec3 current_speed, vec2 texcoords){
+     
+    if(texcoords.x >= 0 && texcoords.x <= 1 && texcoords.y >= 0 && texcoords.y <= 1) {
+        vec3 neighbor_pos = texture(positionTexture, texcoords).rgb;
+        vec3 neighbor_speed = texture(oldVelocityTexture, texcoords).rgb;
+        accumulated_force += neighborForce(current_pos, current_speed, neighbor_pos, neighbor_speed);
+
+    }
+    
+    return accumulated_force;
+}
+
 
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces() {
@@ -74,54 +88,48 @@ vec3 calculateInternalForces() {
     vec3 current_pos = texture(positionTexture, TexCoords).rgb;
     vec3 current_speed = texture(oldVelocityTexture, TexCoords).rgb;
 
+    //compute neighbouring texture coordinates
+    vec2 right = TexCoords + vec2(texture_offset_x, 0.0f);
+    vec2 left = TexCoords - vec2(texture_offset_x, 0.0f);
+    vec2 up = TexCoords + vec2(0.0f, texture_offset_y);
+    vec2 down = TexCoords - vec2(0.0f, texture_offset_y);
+
     //1. the 4-Neighborhood (i.e. the 4 closest neighbors)
-    vec3 neighbor1_pos = texture(positionTexture, TexCoords + vec2(texture_offset, 0.0f)).rgb;
-    vec3 neighbor2_pos = texture(positionTexture, TexCoords - vec2(texture_offset, 0.0f)).rgb;
-    vec3 neighbor3_pos = texture(positionTexture, TexCoords + vec2(0.0f, texture_offset)).rgb;
-    vec3 neighbor4_pos = texture(positionTexture, TexCoords - vec2(0.0f, texture_offset)).rgb;
+    vec3 force1 = vec3(0.0, 0.0, 0.0);
 
-    vec3 neighbor1_speed = texture(oldVelocityTexture, TexCoords + vec2(texture_offset, 0.0f)).rgb;
-    vec3 neighbor2_speed = texture(oldVelocityTexture, TexCoords - vec2(texture_offset, 0.0f)).rgb;
-    vec3 neighbor3_speed = texture(oldVelocityTexture, TexCoords + vec2(0.0f, texture_offset)).rgb;
-    vec3 neighbor4_speed = texture(oldVelocityTexture, TexCoords - vec2(0.0f, texture_offset)).rgb;
+    force1 = getForceFromTexture(force1, current_pos, current_speed, right);
+    force1 = getForceFromTexture(force1, current_pos, current_speed, left);
+    force1 = getForceFromTexture(force1, current_pos, current_speed, up);
+    force1 = getForceFromTexture(force1, current_pos, current_speed, down);
 
-    vec3 force1 = neighborForce(current_pos, current_speed, neighbor1_pos, neighbor1_speed);
-    force1 += neighborForce(current_pos, current_speed, neighbor2_pos, neighbor3_speed);
-    force1 += neighborForce(current_pos, current_speed, neighbor3_pos, neighbor3_speed);
-    force1 += neighborForce(current_pos, current_speed, neighbor4_pos, neighbor4_speed);
 
     //2. the 8-Neighborhood (i.e. the 8 closest neighbors)
-    vec3 neighbor5_pos = texture(positionTexture, TexCoords + vec2(texture_offset, texture_offset)).rgb;
-    vec3 neighbor6_pos = texture(positionTexture, TexCoords + vec2(texture_offset, -texture_offset)).rgb;
-    vec3 neighbor7_pos = texture(positionTexture, TexCoords + vec2(-texture_offset, texture_offset)).rgb;
-    vec3 neighbor8_pos = texture(positionTexture, TexCoords + vec2(-texture_offset, -texture_offset)).rgb;
+    //compute neighbouring texture coordinates
+    vec2 up_right = TexCoords + vec2(texture_offset_x, texture_offset_y);
+    vec2 down_left = TexCoords + vec2(-texture_offset_x, -texture_offset_y);
+    vec2 up_left = TexCoords + vec2(-texture_offset_x, texture_offset_y);
+    vec2 down_right = TexCoords + vec2(texture_offset_x, -texture_offset_y);
 
-    vec3 neighbor5_speed = texture(oldVelocityTexture, TexCoords + vec2(texture_offset, texture_offset)).rgb;
-    vec3 neighbor6_speed = texture(oldVelocityTexture, TexCoords + vec2(texture_offset, -texture_offset)).rgb;
-    vec3 neighbor7_speed = texture(oldVelocityTexture, TexCoords + vec2(-texture_offset, texture_offset)).rgb;
-    vec3 neighbor8_speed = texture(oldVelocityTexture, TexCoords + vec2(-texture_offset, -texture_offset)).rgb;
+    vec3 force2 = vec3(0.0, 0.0, 0.0);
 
-    vec3 force2 = neighborForce(current_pos, current_speed, neighbor5_pos, neighbor5_speed);
-    force2 += neighborForce(current_pos, current_speed, neighbor6_pos, neighbor6_speed);
-    force2 += neighborForce(current_pos, current_speed, neighbor7_pos, neighbor7_speed);
-    force2 += neighborForce(current_pos, current_speed, neighbor8_pos, neighbor8_speed);
+    force2 = getForceFromTexture(force2, current_pos, current_speed, up_right);
+    force2 = getForceFromTexture(force2, current_pos, current_speed, up_left);
+    force2 = getForceFromTexture(force2, current_pos, current_speed, down_right);
+    force2 = getForceFromTexture(force2, current_pos, current_speed, down_left);
     
+
     //3. the 12-Neighborhood (i.e. the 12 closest neighbors)
-    float double_offset = texture_offset * 2.0f;
-    vec3 neighbor9_pos = texture(positionTexture, TexCoords + vec2(double_offset, 0.0f)).rgb;
-    vec3 neighbor10_pos = texture(positionTexture, TexCoords + vec2(-double_offset, 0.0f)).rgb;
-    vec3 neighbor11_pos = texture(positionTexture, TexCoords + vec2(0.0f, double_offset)).rgb;
-    vec3 neighbor12_pos = texture(positionTexture, TexCoords + vec2(0.0f, -double_offset)).rgb;
+    vec3 force3 = vec3(0.0, 0.0, 0.0);
+    
+    vec2 right2 = TexCoords + vec2(2 * texture_offset_x, 0.0f);
+    vec2 left2 = TexCoords - vec2(2 * texture_offset_x, 0.0f);
+    vec2 up2 = TexCoords + vec2(0.0f, 2 * texture_offset_y);
+    vec2 down2 = TexCoords - vec2(0.0f, 2 * texture_offset_y);
 
-    vec3 neighbor9_speed = texture(oldVelocityTexture, TexCoords + vec2(double_offset, 0.0f)).rgb;
-    vec3 neighbor10_speed = texture(oldVelocityTexture, TexCoords + vec2(-double_offset, 0.0f)).rgb;
-    vec3 neighbor11_speed = texture(oldVelocityTexture, TexCoords + vec2(0.0f, double_offset)).rgb;
-    vec3 neighbor12_speed = texture(oldVelocityTexture, TexCoords + vec2(0.0f, -double_offset)).rgb;
-
-    vec3 force3 = neighborForce(current_pos, current_speed, neighbor9_pos, neighbor9_speed);
-    force3 += neighborForce(current_pos, current_speed, neighbor10_pos, neighbor10_speed);
-    force3 += neighborForce(current_pos, current_speed, neighbor11_pos, neighbor11_speed);
-    force3 += neighborForce(current_pos, current_speed, neighbor12_pos, neighbor12_speed);
+    force3 = getForceFromTexture(force3, current_pos, current_speed, right2);
+    force3 = getForceFromTexture(force3, current_pos, current_speed, left2);
+    force3 = getForceFromTexture(force3, current_pos, current_speed, up2);
+    force3 = getForceFromTexture(force3, current_pos, current_speed, down2);
 
     vec3 result_force = force1 + force2 + force3;
     return result_force;
@@ -129,13 +137,13 @@ vec3 calculateInternalForces() {
 
 vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3 neighbor_speed) {
 
-    float rest_dist = 0.05f;
+    //float rest_dist = 0.05f;
     //Calculate distance to the neighbor
-    vec3 dist = neighbor_pos - current_pos;
+    vec3 dist = current_pos - neighbor_pos;
 
-    vec3 speed_diff = neighbor_speed - current_speed; //speed difference between neighboring particles, used for damping
+    vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 0.01f, kd = 0.01f; //constants
+    float ks = 10.0, kd = 0.01f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - rest_dist) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));
