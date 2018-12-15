@@ -43,9 +43,9 @@ float lastFrame = 0.0f;
 /***** Declare Framebuffer objects. ******/
 //We're gonna need 4 of them for pingponging
 //2 for positions, 2 for velocites
-FBOstruct *fbo1, *fbo2, *fbo3, *fbo4;
+FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5;
 
-Shader plainShader, velocityShader, positionShader, testShader;
+Shader plainShader, accelerationShader, velocityShader, positionShader, testShader;
 
 
 /*** Screen quad ***/
@@ -135,6 +135,7 @@ int main()
 	//Shader plainShader("plaintextureshader.vert", "plaintextureshader.frag");
 	plainShader.init("shaders/plaintextureshader.vert", "shaders/plaintextureshader.frag");
 	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
+	accelerationShader.init("shaders/acceleration.vert", "shaders/acceleration.frag");
 	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
 	positionShader.init("shaders/position.vert", "shaders/position.frag");
 	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
@@ -157,6 +158,8 @@ int main()
 	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
 	GLuint velocity_texture2 = generateTextureFromData(f.velocityarray);
 
+	GLuint acceleration_texture1 = generateTextureFromData(f.velocityarray);
+
 	/***** Pass texture offsets to velocity shader *******/
 	float offset_x = 1 / (float)num_particles_width;
 	float offset_y = 1 / (float)num_particles_height;
@@ -171,6 +174,16 @@ int main()
 
 	unsigned int rLoc = glGetUniformLocation(velocityShader.ID, "rest_dist");
 	glUniform1f(rLoc, rest_dist);
+	// --- acceleration
+	accelerationShader.use();
+	unsigned int xLoc2 = glGetUniformLocation(accelerationShader.ID, "texture_offset_x");
+	glUniform1f(xLoc2, offset_x);
+
+	unsigned int yLoc2 = glGetUniformLocation(accelerationShader.ID, "texture_offset_y");
+	glUniform1f(yLoc2, offset_y);
+
+	unsigned int rLoc2 = glGetUniformLocation(accelerationShader.ID, "rest_dist");
+	glUniform1f(rLoc2, rest_dist);
 
 
 	/*********** set up frame buffer objects *****************/
@@ -178,11 +191,13 @@ int main()
 	fbo2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo4 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
+	fbo5 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 
 	drawTextureToFBO(fbo1, position_texture1);
 	drawTextureToFBO(fbo2, position_texture2);
 	drawTextureToFBO(fbo3, velocity_texture1);
 	drawTextureToFBO(fbo4, velocity_texture2);
+	drawTextureToFBO(fbo5, acceleration_texture1);
 	useFBO(0L, fbo1, 0L);
 
 	
@@ -294,7 +309,8 @@ int main()
 
 
 		f.render();
-		//drawScreenQuad(plainShader);
+		useFBO(0L, fbo5, 0L);
+		drawScreenQuad(plainShader);
 
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -355,8 +371,9 @@ void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOst
 	positionShader.use();
 	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
+	glUniform1i(glGetUniformLocation(positionShader.ID, "accelerationTexture"), 2);
 
-	useFBO(pos2, pos1, vel1); //Render to fbo1, without any input
+	useFBO(pos2, pos1, vel1, fbo5); //Render to fbo1, without any input
 	
 	drawScreenQuad(positionShader); //draw the texture
 
@@ -368,6 +385,15 @@ void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOst
 
 	useFBO(vel2, vel1, pos1);
 	drawScreenQuad(velocityShader);
+
+	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
+	//useFBO(fbo2, fb01, 0L);
+	accelerationShader.use();
+	glUniform1i(glGetUniformLocation(accelerationShader.ID, "oldVelocityTexture"), 0);
+	glUniform1i(glGetUniformLocation(accelerationShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
+
+	useFBO(fbo5, vel1, pos1);
+	drawScreenQuad(accelerationShader);
 
 }
 
