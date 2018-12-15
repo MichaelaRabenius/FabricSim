@@ -66,8 +66,8 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 1;
 float fabric_height = 1;
-GLsizei num_particles_width = 20;
-GLsizei num_particles_height = 20;
+GLsizei num_particles_width = 40;
+GLsizei num_particles_height = 40;
 
 
 /***** Function Declarations *****/
@@ -139,12 +139,6 @@ int main()
 	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
 	positionShader.init("shaders/position.vert", "shaders/position.frag");
 	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
-
-	//Here is one way we can bind a texture to the shader
-	//This will probably be more relevant when the shader needs more than one texture
-	//plainShader.use();
-	//plainShader.setInt("screenTexture", 0);
-
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
@@ -237,16 +231,6 @@ int main()
 			useFBO(0L, fbo2, 0L);
 		}
 
-		///*useFBO(fbo1, fbo2, 0L);
-		//f.render();*/
-
-		//useFBO(0L, fbo1, 0L);
-
-		//plainShader.use();
-		////glBindTexture(GL_TEXTURE_2D, position_texture1); //just for testing: bind the position texture to the screen quad
-		//glBindVertexArray(quadVAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
-
 		/*** TEST: Apply a texture from fbo to fabric.***/
 		//Update the positions of the fabric
 		testShader.use();
@@ -269,8 +253,9 @@ int main()
 		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		testShader.setMat4("model", model);
 
-
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		f.render();
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		/*useFBO(0L, fbo1, 0L);
 		drawScreenQuad(plainShader);
 */
@@ -329,15 +314,30 @@ void drawScreenQuad(Shader shader) {
 //Here we do pingponging
 void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOstruct * vel2) {
 
+	// 2. update acceleration
+	accelerationShader.use();
+	glUniform1i(glGetUniformLocation(accelerationShader.ID, "oldVelocityTexture"), 0);
+	glUniform1i(glGetUniformLocation(accelerationShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
+	useFBO(fbo5, vel1, pos1);
+	drawScreenQuad(accelerationShader);
+
+
+	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
+	//useFBO(fbo2, fb01, 0L);
+	velocityShader.use();
+	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
+	glUniform1i(glGetUniformLocation(velocityShader.ID, "accelerationTexture"), 1); // Need the positions to be able to update the velocity
+	useFBO(vel2, vel1, fbo5);
+	drawScreenQuad(velocityShader);
+
+	
 	// 1. render position_texture1 to position_texture2, with velocity_texture1 as additional input.
 	positionShader.use();
 	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "accelerationTexture"), 2);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "positionTexture"), 3);
-
 	useFBO(pos2, oldfbo, vel1, fbo5, pos1); //Render to fbo1, without any input
-	
 	drawScreenQuad(positionShader); //draw the texture
 
 	// update the fbo holding the old position
@@ -345,23 +345,7 @@ void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOst
 	useFBO(oldfbo, pos1, 0L);
 	drawScreenQuad(plainShader);
 
-	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
-	//useFBO(fbo2, fb01, 0L);
-	velocityShader.use();
-	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
-	glUniform1i(glGetUniformLocation(velocityShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
-
-	useFBO(vel2, vel1, pos1);
-	drawScreenQuad(velocityShader);
-
-	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
-	//useFBO(fbo2, fb01, 0L);
-	accelerationShader.use();
-	glUniform1i(glGetUniformLocation(accelerationShader.ID, "oldVelocityTexture"), 0);
-	glUniform1i(glGetUniformLocation(accelerationShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
-
-	useFBO(fbo5, vel1, pos1);
-	drawScreenQuad(accelerationShader);
+	
 
 }
 

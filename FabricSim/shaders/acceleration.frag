@@ -13,8 +13,6 @@ uniform float texture_offset_x;
 uniform float texture_offset_y; 
 uniform float rest_dist;
 
-float texture_offset = 0.05;
-
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces();
 
@@ -24,12 +22,12 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 void main()
 {
     //Provisional time step
-    float dt = 0.01;
+    float dt = 0.002;
 
     //Same question, is our texture vec3 or vec4
     vec4 velocityData = texture(oldVelocityTexture, TexCoords);
     vec3 oldVelocity = velocityData.rgb;
-    vec3 pos = texture(positionTexture, TexCoords - vec2(texture_offset, 0.0f)).rgb;
+
 
     // In reality, the fabric is going to be affected by both internal and external forces.
     // Therefore we must calculate the acceleration from F = m*a
@@ -38,24 +36,13 @@ void main()
     //mass of particle
     float mass = 1.0f;
 
-    // Internal force
-    // This comes from the mass spring system (Hook's law (F = k * delta_x))
-    // See section 12.3 in the course book
-
-    //Pseudocode
-    // vec3 dist = vec3(0.05f, 0.0f, 0.0f); // Current distance to neighbor particle
-    // float rest_dist = 0.05f; // rest distance between particles
-    // vec3 speed_diff = vec3(0.05f, 0.0f, 0.0f); //speed difference between neighboring particles, used for damping
-    // float ks = 0.01f, kd = 0.01f; //constants
-
-
     vec3 internal_force = calculateInternalForces();
 
     //External forces
     vec3 wind = vec3(0.03f, 0.0f, 0.3f); // for testing only
-    vec3 gravity = vec3(0.0f, -0.01f, 0.0f); //simple gravitational pull
+    vec3 gravity = vec3(0.0f, -1.01f, 0.0f); //simple gravitational pull
 
-    vec3 acceleration = (gravity + internal_force) / mass;
+    vec3 acceleration = (internal_force + gravity) / mass;
     
     if(velocityData.w == 1.0) {
         acceleration = vec3(0.0f, 0.0f, 0.0f);
@@ -143,8 +130,7 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 10.0, kd = 0.01f; //constants
-
+    float ks = 50.0, kd = 10; //constants. ks determines the tightness of the springs and kd the enrgy
 
     vec3 internal_force = -(ks * (length(dist) - rest_dist) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));
     return internal_force;
