@@ -411,3 +411,64 @@ void useFBO(FBOstruct *out, FBOstruct *in1, FBOstruct *in2, FBOstruct *in3)
 	else
 		glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+
+// choose input (textures) and output (FBO)
+void useFBO(FBOstruct *out, FBOstruct *in1, FBOstruct *in2, FBOstruct *in3, FBOstruct *in4)
+{
+	GLint curfbo;
+
+	// This was supposed to catch changes in viewport size and update lastw/lasth.
+	// It worked for me in the past, but now it causes problems to I have to
+	// fall back to manual updating.
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curfbo);
+	if (curfbo == 0)
+	{
+		GLint viewport[4] = { 0,0,0,0 };
+		GLint w, h;
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		w = viewport[2] - viewport[0];
+		h = viewport[3] - viewport[1];
+		if ((w > 0) && (h > 0) && (w < 65536) && (h < 65536)) // I don't believe in 64k pixel wide frame buffers for quite some time
+		{
+			lastw = viewport[2] - viewport[0];
+			lasth = viewport[3] - viewport[1];
+		}
+	}
+
+	if (out != 0L)
+		glViewport(0, 0, out->width, out->height);
+	else
+		glViewport(0, 0, lastw, lasth);
+
+	if (out != 0L)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, out->fb);
+		glViewport(0, 0, out->width, out->height);
+	}
+	else
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glActiveTexture(GL_TEXTURE3);
+	if (in4 != 0L)
+		glBindTexture(GL_TEXTURE_2D, in4->texid);
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+	glActiveTexture(GL_TEXTURE2);
+	if (in3 != 0L)
+		glBindTexture(GL_TEXTURE_2D, in3->texid);
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+	glActiveTexture(GL_TEXTURE1);
+	if (in2 != 0L)
+		glBindTexture(GL_TEXTURE_2D, in2->texid);
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+	if (in1 != 0L)
+		glBindTexture(GL_TEXTURE_2D, in1->texid);
+	else
+		glBindTexture(GL_TEXTURE_2D, 0);
+}

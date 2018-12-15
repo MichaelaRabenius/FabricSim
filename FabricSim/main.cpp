@@ -43,7 +43,7 @@ float lastFrame = 0.0f;
 /***** Declare Framebuffer objects. ******/
 //We're gonna need 4 of them for pingponging
 //2 for positions, 2 for velocites
-FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5;
+FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *oldfbo;
 
 Shader plainShader, accelerationShader, velocityShader, positionShader, testShader;
 
@@ -153,6 +153,7 @@ int main()
 	//We must create textures from the position data in Fabric.
 	GLuint position_texture1 = generateTextureFromData(f.positionarray);
 	GLuint position_texture2 = generateTextureFromData(f.positionarray);
+	GLuint position_texture3 = generateTextureFromData(f.positionarray);
 
 	//Create textures containing velocities, initially zero
 	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
@@ -192,9 +193,11 @@ int main()
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo4 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo5 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
+	oldfbo = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 
 	drawTextureToFBO(fbo1, position_texture1);
 	drawTextureToFBO(fbo2, position_texture2);
+	drawTextureToFBO(oldfbo, position_texture3);
 	drawTextureToFBO(fbo3, velocity_texture1);
 	drawTextureToFBO(fbo4, velocity_texture2);
 	drawTextureToFBO(fbo5, acceleration_texture1);
@@ -203,47 +206,6 @@ int main()
 	
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-	int idx = 0;
-	int idx2 = 0;
-	int idx3 = 0;
-	for (int i = 0; i < num_particles_height * num_particles_width; i++) {
-		//std::cout << "positionarray: " << f.positionarray[idx3] << " ";
-		//std::cout << f.positionarray[idx3 + 1] << " ";
-		////std::cout << f.positionarray[idx + 2] << " ";
-		//std::cout << f.positionarray[idx3 + 2] << std::endl;
-
-		//std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
-		//std::cout << f.velocityarray[idx3 + 1] << " ";
-		////std::cout << f.velocityarray[idx + 2] << " ";
-		//std::cout << f.velocityarray[idx3 + 2] << std::endl;
-
-		/*std::cout << "coordinates: ";
-		std::cout << f.vertexarray[idx] << " ";
-		std::cout << f.vertexarray[idx + 1] << " ";
-		std::cout << f.vertexarray[idx + 2] << " ";
-		std::cout << "             texture coordinates: ";
-		std::cout << f.vertexarray[idx + 6] << " ";
-		std::cout << f.vertexarray[idx + 7] << std::endl;
-
-
-
-		idx += 8;*/
-
-		//std::string pos = "Position " + std::to_string(i) + ": " + std::to_string(f.vertexarray[idx]) + " " + std::to_string(f.vertexarray[idx+1]) + " " + std::to_string(f.vertexarray[idx + 2]);
-		//std::string tri = "Triangle: "+ std::to_string(f.indexarray[idx2]) + " " + std::to_string(f.indexarray[idx2 + 1]) + " " + std::to_string(f.indexarray[idx2 + 2]);
-		//std::string tex = "Texture: " + std::to_string(f.vertexarray[idx + 6]) + " " + std::to_string(f.vertexarray[idx + 7]);
-		//
-	
-		//std::cout << std::left << std::setw(45) << pos << std::setw(40) << std::left << tri << std::setw(40) << tex << std::endl;
-
-		//idx += 8;
-		//idx2 += 3;
-		//idx3 += 4;
-	}
-
-
-
 	int flip = 0;
 
 	// render loop
@@ -309,9 +271,9 @@ int main()
 
 
 		f.render();
-		useFBO(0L, fbo5, 0L);
+		/*useFBO(0L, fbo1, 0L);
 		drawScreenQuad(plainShader);
-
+*/
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -372,10 +334,16 @@ void updatePositions(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOst
 	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
 	glUniform1i(glGetUniformLocation(positionShader.ID, "accelerationTexture"), 2);
+	glUniform1i(glGetUniformLocation(positionShader.ID, "positionTexture"), 3);
 
-	useFBO(pos2, pos1, vel1, fbo5); //Render to fbo1, without any input
+	useFBO(pos2, oldfbo, vel1, fbo5, pos1); //Render to fbo1, without any input
 	
 	drawScreenQuad(positionShader); //draw the texture
+
+	// update the fbo holding the old position
+	plainShader.use();
+	useFBO(oldfbo, pos1, 0L);
+	drawScreenQuad(plainShader);
 
 	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
 	//useFBO(fbo2, fb01, 0L);

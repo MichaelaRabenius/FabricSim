@@ -23,4 +23,5 @@ FBOstruct *initFBO(int width, int height, int int_method);
 FBOstruct *initFBO2(int width, int height, int int_method, int create_depthimage);
 void useFBO(FBOstruct *out, FBOstruct *in1, FBOstruct *in2);
 void useFBO(FBOstruct *out, FBOstruct *in1, FBOstruct *in2, FBOstruct *in3);
+void useFBO(FBOstruct *out, FBOstruct *in1, FBOstruct *in2, FBOstruct *in3, FBOstruct *in4);
 void updateScreenSizeForFBOHandler(int w, int h); // Temporary workaround to inform useFBO of screen size changes
