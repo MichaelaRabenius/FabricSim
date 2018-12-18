@@ -11,7 +11,7 @@ uniform float timestep;
 void main()
 {
 	//Provisional time step
-    float dt = 0.03;
+    float dt = 0.01;
 
 	//Pseudocode
     vec3 oldPos = texture(oldpositionTexture, TexCoords).rgb; //Note to self: will the texture contain only rgb, not rgba?
