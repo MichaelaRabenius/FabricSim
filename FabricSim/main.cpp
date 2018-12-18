@@ -30,7 +30,7 @@ const unsigned int SCR_HEIGHT = 800;
 
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, -1.0f, 2.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -66,8 +66,8 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 1;
 float fabric_height = 1;
-GLsizei num_particles_width = 10;
-GLsizei num_particles_height = 10;
+GLsizei num_particles_width = 21;
+GLsizei num_particles_height = 21;
 
 
 /***** Function Declarations *****/
@@ -332,9 +332,9 @@ int main()
 		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		testShader.setMat4("model", model);
 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		f.render();
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		/*** TEST: draw only texture to screen***/
 		/*updatePositionsVerlet(fbo1, fbo2, fbo3);

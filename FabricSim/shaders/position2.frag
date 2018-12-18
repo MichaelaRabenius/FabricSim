@@ -5,7 +5,7 @@ in vec2 TexCoords;
 
 uniform sampler2D positionTexture;
 uniform sampler2D oldpositionTexture;
-uniform sampler2D velocityTexture;
+uniform sampler2D normalTexture;
 
 uniform float texture_offset_x;
 uniform float texture_offset_y; 
@@ -13,9 +13,12 @@ uniform float rest_dist;
 uniform float rest_dist2;
 uniform float rest_dist3;
 
-uniform float dt = 0.01;
+uniform float dt = 0.001;
 
 uniform ivec2 resolution;
+
+uniform float radius = 0.2;
+uniform vec3 center = vec3(0.0, -0.5, 0.0);
 
 /*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles
@@ -34,27 +37,31 @@ void main()
     vec3 current_pos = texture(positionTexture, TexCoords).rgb;
     vec3 old_pos = texture(oldpositionTexture, TexCoords).rgb;
 
-    vec3 v = texture(velocityTexture, TexCoords).rgb;
-
     vec3 current_speed = (current_pos - old_pos) / dt;
 
     vec3 F = calculateInternalForces();
 
-    float mass = 1.0;
-    vec3 gravity = vec3(0.0f, -0.1f, 0.0f);; //simple gravitational pull
-    vec3 acceleration = (F + gravity) / mass;
+    float mass = 0.01;
+    vec3 gravity = vec3(0.0f, -0.82f, 0.0f); //simple gravitational pull
+    vec3 wind = vec3(0.0f, 0.0f, 0.3f);
+    vec3 acceleration = (F + gravity + wind) / mass;
 
     //Euler integration
-    // vec3 speed = current_speed + acceleration * dt;
-    // vec3 pos = current_pos + speed * dt;
-
-    //Verlet integration
-    vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
-
-    //check if the point is pinned. If it is, do not move it
-    if(pinned == 1.0) {
+    vec3 speed = current_speed + acceleration * dt;
+    vec3 pos = current_pos + speed * dt;
+    
+    vec3 dist_to_sphere = pos - center;
+    if(length(dist_to_sphere) <= radius ) {
         pos = current_pos;
     }
+
+    //Verlet integration
+    //vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
+
+    //check if the point is pinned. If it is, do not move it
+    // if(pinned == 1.0) {
+    //     pos = current_pos;
+    // }
 
 	FragColor = vec4(pos, pinned);
     //FragColor = vec4(F, pinned);
@@ -140,7 +147,7 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 10.0, kd = 0.01f; //constants
+    float ks = 57.0, kd = -0.21f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));

@@ -44,7 +44,7 @@ void Fabric::Create_Fabric()
 		for (int x = 0; x < num_particles_width; ++x) {
 
 			// Calculate the position of the new particle.
-			glm::vec3 position = glm::vec3(x * width / ((float)num_particles_width - 1) -0.5f, y * height / ((float)num_particles_height - 1) - 0.5f, 0.0f);
+			glm::vec3 position = glm::vec3(x * width / ((float)num_particles_width - 1) -0.5f,0.0f, y * height / ((float)num_particles_height - 1) - 0.5f);
 			
 			//Insert vertex positions
 			vertexarray[idx] = position.x;
@@ -75,7 +75,8 @@ void Fabric::Create_Fabric()
 			/*velocityarray[idx + 3] = x / (float)num_particles_width;
 			velocityarray[idx + 4] = y / (float)num_particles_height;*/
 
-			if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
+			if (y == num_particles_height - 1) {
+				//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
 				positionarray[idx2 + 3] = 1.0f;
 				velocityarray[idx2 + 3] = 1.0f;
 			}
