@@ -58,7 +58,7 @@ void main()
 
 	FragColor = vec4(pos, pinned);
     //FragColor = vec4(F, pinned);
-    FragColor = vec4(1.0, 0.0, 1.0, pinned);
+    //FragColor = vec4(1.0, 0.0, 1.0, pinned);
 } 
 
 

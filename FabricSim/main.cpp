@@ -339,7 +339,7 @@ int main()
 		/*** TEST: draw only texture to screen***/
 		/*updatePositionsVerlet(fbo1, fbo2, fbo3);
 		useFBO(0L, fbo1, 0L);*/
-		drawScreenQuad(plainShader);
+		//drawScreenQuad(plainShader);
 
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
