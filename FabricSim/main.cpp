@@ -13,6 +13,7 @@
 #include "Shader.h"
 #include "Fabric.h"
 #include "Camera.h"
+#include "Sphere.h"
 
 #include "GL_utilities.h"
 #include <iostream>
@@ -45,7 +46,7 @@ float lastFrame = 0.0f;
 //2 for positions, 2 for velocites
 FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *oldfbo;
 
-Shader plainShader, accelerationShader, velocityShader, positionShader, testShader;
+Shader plainShader, accelerationShader, velocityShader, positionShader, testShader, sphereShader;
 
 
 /*** Screen quad ***/
@@ -139,6 +140,7 @@ int main()
 	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
 	positionShader.init("shaders/position.vert", "shaders/position.frag");
 	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
+	sphereShader.init("shaders/plain.vert", "shaders/plain.frag");
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
@@ -158,27 +160,28 @@ int main()
 	/***** Pass texture offsets to velocity shader *******/
 	float offset_x = 1 / (float)num_particles_width;
 	float offset_y = 1 / (float)num_particles_height;
-	float rest_dist = fabric_width / (float)(num_particles_width - 1);
 
-	velocityShader.use();
-	unsigned int xLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_x");
-	glUniform1f(xLoc, offset_x);
+	float rest_dist1 = fabric_width / (float)(num_particles_width - 1);
+	float rest_dist2 = sqrt(rest_dist1*rest_dist1 + rest_dist1 * rest_dist1);
+	float rest_dist3 = rest_dist1 * 2.0;
 
-	unsigned int yLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_y");
-	glUniform1f(yLoc, offset_y);
 
-	unsigned int rLoc = glGetUniformLocation(velocityShader.ID, "rest_dist");
-	glUniform1f(rLoc, rest_dist);
 	// --- acceleration
 	accelerationShader.use();
-	unsigned int xLoc2 = glGetUniformLocation(accelerationShader.ID, "texture_offset_x");
-	glUniform1f(xLoc2, offset_x);
+	unsigned int xLoc = glGetUniformLocation(accelerationShader.ID, "texture_offset_x");
+	glUniform1f(xLoc, offset_x);
 
-	unsigned int yLoc2 = glGetUniformLocation(accelerationShader.ID, "texture_offset_y");
-	glUniform1f(yLoc2, offset_y);
+	unsigned int yLoc = glGetUniformLocation(accelerationShader.ID, "texture_offset_y");
+	glUniform1f(yLoc, offset_y);
 
-	unsigned int rLoc2 = glGetUniformLocation(accelerationShader.ID, "rest_dist");
-	glUniform1f(rLoc2, rest_dist);
+	unsigned int rLoc = glGetUniformLocation(accelerationShader.ID, "rest_dist1");
+	glUniform1f(rLoc, rest_dist1);
+
+	unsigned int rLoc2 = glGetUniformLocation(accelerationShader.ID, "rest_dist2");
+	glUniform1f(rLoc, rest_dist2);
+
+	unsigned int rLoc3 = glGetUniformLocation(accelerationShader.ID, "rest_dist3");
+	glUniform1f(rLoc, rest_dist3);
 
 
 	/*********** set up frame buffer objects *****************/
@@ -196,6 +199,11 @@ int main()
 	drawTextureToFBO(fbo4, velocity_texture2);
 	drawTextureToFBO(fbo5, acceleration_texture1);
 	useFBO(0L, fbo1, 0L);
+
+
+	//create sphere
+	Sphere s;
+	s.createSphere(0.2f, 20);
 
 	
 	// uncomment this call to draw in wireframe polygons.
@@ -251,14 +259,28 @@ int main()
 
 		glm::mat4 model(1.0f);
 		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0f));
 		testShader.setMat4("model", model);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		f.render();
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		/*useFBO(0L, fbo1, 0L);
-		drawScreenQuad(plainShader);
-*/
+		///*useFBO(0L, fbo5, 0L);
+		//drawScreenQuad(plainShader);*/
+
+		sphereShader.use();
+		// pass projection matrix to shader (note that in this case it could change every frame)
+		sphereShader.setMat4("projection", projection);
+
+		// camera/view transformation
+		sphereShader.setMat4("view", view);
+
+		glm::mat4 model2(1.0f);
+		model = glm::rotate(model2, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		sphereShader.setMat4("model", model2);
+
+		s.render();
+
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------

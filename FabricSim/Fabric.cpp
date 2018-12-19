@@ -75,7 +75,8 @@ void Fabric::Create_Fabric()
 			/*velocityarray[idx + 3] = x / (float)num_particles_width;
 			velocityarray[idx + 4] = y / (float)num_particles_height;*/
 
-			if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
+			if (y == num_particles_height - 1) {
+				//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
 				positionarray[idx2 + 3] = 1.0f;
 				velocityarray[idx2 + 3] = 1.0f;
 			}

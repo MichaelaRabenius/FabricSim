@@ -8,7 +8,9 @@ uniform sampler2D velocityTexture;
 uniform sampler2D accelerationTexture;
 uniform sampler2D positionTexture;
 
-uniform float timestep;
+uniform float radius = 0.2;
+uniform vec3 center = vec3(0.0, 0.0, 0.0);
+
 
 void main()
 {
@@ -23,6 +25,12 @@ void main()
 	
 	//vec3 newPos = oldPos + velocity * dt;
 	vec3 newPos = 2.0 * currentPos -  oldPos + acceleration.rgb * dt * dt;
+
+	//distance to sphere center
+	vec3 dist = newPos - center;
+	if(length(dist) <= radius) {
+		newPos = currentPos;
+	}
 
 	// if(currentPos.w == 1.0) {
 	// 	newPos = vec3(0.0, 0.0, 1.0);
