@@ -18,7 +18,7 @@ uniform float dt = 0.001;
 uniform ivec2 resolution;
 
 uniform float radius = 0.2;
-uniform vec3 center = vec3(0.0, -0.5, 0.0);
+uniform vec3 center = vec3(0.0, -1.0, 0.0);
 
 /*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles

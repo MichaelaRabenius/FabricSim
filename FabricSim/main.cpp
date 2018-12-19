@@ -9,10 +9,11 @@
 #include "glm/ext.hpp"
 #include "glm/gtx/string_cast.hpp"
 
-
+#include "Sphere.h"
 #include "Shader.h"
 #include "Fabric.h"
 #include "Camera.h"
+
 
 #include "GL_utilities.h"
 #include <iostream>
@@ -30,7 +31,7 @@ const unsigned int SCR_HEIGHT = 800;
 
 
 // camera
-Camera camera(glm::vec3(0.0f, -1.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -45,7 +46,7 @@ float lastFrame = 0.0f;
 //2 for positions, 2 for velocites
 FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *fbo1_2, *fbo2_2, *fbo3_2, *normalfbo;
 
-Shader plainShader, velocityShader, positionShader, positionShader2, testShader, normalShader;
+Shader plainShader, velocityShader, positionShader, positionShader2, testShader, normalShader, sphereShader;
 
 
 /*** Screen quad ***/
@@ -115,6 +116,8 @@ int main()
 		return -1;
 	}
 
+	glEnable(GL_DEPTH_TEST);
+
 	/********** set up screen quad **********/
 	// screen quad VAO
 	GLuint quadVBO;
@@ -141,6 +144,7 @@ int main()
 	positionShader2.init("shaders/position2.vert", "shaders/position2.frag");
 	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
 	normalShader.init("shaders/normal.vert", "shaders/normal.frag");
+	sphereShader.init("shaders/plain.vert", "shaders/plain.frag");
 
 	//Here is one way we can bind a texture to the shader
 	//This will probably be more relevant when the shader needs more than one texture
@@ -236,22 +240,22 @@ int main()
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-
+	/*
 	int idx = 0;
 	int idx2 = 0;
 	int idx3 = 0;
 	for (int i = 0; i < num_particles_height * num_particles_width; i++) {
-		/*std::cout << "positionarray: " << f.positionarray[idx3] << " ";
+		std::cout << "positionarray: " << f.positionarray[idx3] << " ";
 		std::cout << f.positionarray[idx3 + 1] << " ";
-		std::cout << f.positionarray[idx3 + 2] << " ";*/
-		//std::cout << f.positionarray[idx3 + 3] << std::endl;
+		std::cout << f.positionarray[idx3 + 2] << " ";
+		std::cout << f.positionarray[idx3 + 3] << std::endl;
 
-		//std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
-		//std::cout << f.velocityarray[idx3 + 1] << " ";
-		////std::cout << f.velocityarray[idx + 2] << " ";
-		//std::cout << f.velocityarray[idx3 + 2] << std::endl;
+		std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
+		std::cout << f.velocityarray[idx3 + 1] << " ";
+		//std::cout << f.velocityarray[idx + 2] << " ";
+		std::cout << f.velocityarray[idx3 + 2] << std::endl;
 
-		/*std::cout << "coordinates: ";
+		std::cout << "coordinates: ";
 		std::cout << f.vertexarray[idx] << " ";
 		std::cout << f.vertexarray[idx + 1] << " ";
 		std::cout << f.vertexarray[idx + 2] << " ";
@@ -261,19 +265,25 @@ int main()
 
 
 
-		idx += 8;*/
+		idx += 8;
 
-		//std::string pos = "Position " + std::to_string(i) + ": " + std::to_string(f.vertexarray[idx]) + " " + std::to_string(f.vertexarray[idx+1]) + " " + std::to_string(f.vertexarray[idx + 2]);
-		//std::string tri = "Triangle: "+ std::to_string(f.indexarray[idx2]) + " " + std::to_string(f.indexarray[idx2 + 1]) + " " + std::to_string(f.indexarray[idx2 + 2]);
-		//std::string tex = "Texture: " + std::to_string(f.vertexarray[idx + 6]) + " " + std::to_string(f.vertexarray[idx + 7]);
-		//
+		std::string pos = "Position " + std::to_string(i) + ": " + std::to_string(f.vertexarray[idx]) + " " + std::to_string(f.vertexarray[idx+1]) + " " + std::to_string(f.vertexarray[idx + 2]);
+		std::string tri = "Triangle: "+ std::to_string(f.indexarray[idx2]) + " " + std::to_string(f.indexarray[idx2 + 1]) + " " + std::to_string(f.indexarray[idx2 + 2]);
+		std::string tex = "Texture: " + std::to_string(f.vertexarray[idx + 6]) + " " + std::to_string(f.vertexarray[idx + 7]);
+		
 
-		//std::cout << std::left << std::setw(45) << pos << std::setw(40) << std::left << tri << std::setw(40) << tex << std::endl;
+		std::cout << std::left << std::setw(45) << pos << std::setw(40) << std::left << tri << std::setw(40) << tex << std::endl;
 
-		//idx += 8;
-		//idx2 += 3;
+		idx += 8;
+		idx2 += 3;
 		idx3 += 4;
 	}
+	*/
+
+	//Create a sphere
+	Sphere sphere;
+	sphere.createSphere(0.2f, 20);
+
 
 	int flip = 0;
 
@@ -321,30 +331,58 @@ int main()
 
 		/*** TEST: Apply a texture from fbo to fabric.***/
 		//Update the positions of the fabric
+
+		sphereShader.use();
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// pass projection matrix to shader (note that in this case it could change every frame)
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		// camera/view transformation
+		glm::mat4 view = camera.GetViewMatrix();
+
+
+		// pass projection matrix to shader (note that in this case it could change every frame)
+		sphereShader.setMat4("projection", projection);
+
+		// camera/view transformation
+		sphereShader.setMat4("view", view);
+
+		glm::mat4 model2(1.0f);
+		//model2 = glm::rotate(model2, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		model2 = glm::translate(model2, glm::vec3(0.0f, -1.0f, 0.0f));
+		sphereShader.setMat4("model", model2);
+
+		sphere.render();
+
 		testShader.use();
 		glUniform1i(glGetUniformLocation(testShader.ID, "positionTexture"), 0);
 		glUniform1i(glGetUniformLocation(testShader.ID, "normalTexture"), 1);
 
 		
-		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		/*glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 
-		// pass projection matrix to shader (note that in this case it could change every frame)
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		
+
+
+
 		testShader.setMat4("projection", projection);
-
-		// camera/view transformation
-		glm::mat4 view = camera.GetViewMatrix();
 		testShader.setMat4("view", view);
 
 
 		glm::mat4 model(1.0f);
 		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		
 		testShader.setMat4("model", model);
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		f.render();
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		///*useFBO(0L, fbo5, 0L);
+		//drawScreenQuad(plainShader);*/
+
+		
 
 		/*** TEST: draw only texture to screen***/
 		//updatePositionsVerlet(fbo1, fbo2, fbo3);
