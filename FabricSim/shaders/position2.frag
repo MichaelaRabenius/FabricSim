@@ -13,12 +13,14 @@ uniform float rest_dist;
 uniform float rest_dist2;
 uniform float rest_dist3;
 
-uniform float dt = 0.001;
+uniform float dt = 0.0001;
 
 uniform ivec2 resolution;
 
 uniform float radius = 0.2;
 uniform vec3 center = vec3(0.0, -1.0, 0.0);
+
+uniform float damping = -0.0125f;;
 
 /*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles
@@ -41,11 +43,13 @@ void main()
 
     vec3 F = calculateInternalForces();
 
-    float mass = 0.01;
-    vec3 gravity = vec3(0.0f, -1.82f, 0.0f); //simple gravitational pull
+    float mass = 0.001;
+    vec3 gravity = vec3(0.0f, -9.81f, 0.0f); //simple gravitational pull
     vec3 wind = vec3(0.0f, 0.0f, 0.3f);
     
-    vec3 acceleration = (F + gravity) / mass;
+    F += gravity * mass + (current_speed * damping);
+
+    vec3 acceleration =( (F + gravity) / mass);
 
     //Euler integration
     // vec3 speed = current_speed + acceleration * dt;
@@ -57,7 +61,7 @@ void main()
 
     //collision detection
     vec3 dist_to_sphere = pos - center;
-    if(length(dist_to_sphere) <= radius + 0.02 ) {
+    if(length(dist_to_sphere) <= radius + 0.018 ) {
         pos = current_pos;
     }
 
@@ -150,7 +154,7 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 50.0, kd = -0.25f; //constants
+    float ks = 200.75, kd = -0.7f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));

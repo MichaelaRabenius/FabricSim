@@ -69,8 +69,8 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 1;
 float fabric_height = 1;
-GLsizei num_particles_width = 50;
-GLsizei num_particles_height = 50;
+GLsizei num_particles_width = 30;
+GLsizei num_particles_height = 30;
 
 
 /***** Sphere variables *******/
