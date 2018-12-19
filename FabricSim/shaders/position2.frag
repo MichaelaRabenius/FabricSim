@@ -44,6 +44,7 @@ void main()
     float mass = 0.01;
     vec3 gravity = vec3(0.0f, -1.82f, 0.0f); //simple gravitational pull
     vec3 wind = vec3(0.0f, 0.0f, 0.3f);
+    
     vec3 acceleration = (F + gravity) / mass;
 
     //Euler integration
@@ -56,7 +57,7 @@ void main()
 
     //collision detection
     vec3 dist_to_sphere = pos - center;
-    if(length(dist_to_sphere) <= radius ) {
+    if(length(dist_to_sphere) <= radius + 0.02 ) {
         pos = current_pos;
     }
 

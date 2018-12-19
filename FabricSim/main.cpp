@@ -31,10 +31,12 @@ const unsigned int SCR_HEIGHT = 800;
 
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, -1.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
+
+glm::mat4 rot(1.0);
 
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
@@ -67,8 +69,14 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 1;
 float fabric_height = 1;
-GLsizei num_particles_width = 30;
-GLsizei num_particles_height = 30;
+GLsizei num_particles_width = 50;
+GLsizei num_particles_height = 50;
+
+
+/***** Sphere variables *******/
+float radius = 0.2f;
+glm::vec3 center(0.0f, 0.0f, 0.0f);
+Sphere sphere;
 
 
 /***** Function Declarations *****/
@@ -116,7 +124,7 @@ int main()
 		return -1;
 	}
 
-	glEnable(GL_DEPTH_TEST);
+	
 
 	/********** set up screen quad **********/
 	// screen quad VAO
@@ -210,6 +218,7 @@ int main()
 
 
 	/*********** set up frame buffer objects *****************/
+
 	fbo1 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
@@ -227,13 +236,16 @@ int main()
 	drawTextureToFBO(fbo3, position_texture3);
 	drawTextureToFBO(fbo4, velocity_texture1);
 	drawTextureToFBO(fbo5, velocity_texture2);
+	
 
 	drawTextureToFBO(fbo1_2, position_texture1);
 	drawTextureToFBO(fbo2_2, position_texture2);
 	drawTextureToFBO(fbo3_2, position_texture3);
 
+	
 	drawTextureToFBO(normalfbo, checker_texture); // texture should contain normals.
-
+	
+	
 	useFBO(0L, fbo1, 0L);
 
 	
@@ -281,12 +293,14 @@ int main()
 	*/
 
 	//Create a sphere
-	Sphere sphere;
-	sphere.createSphere(0.2f, 20);
+	
+	sphere.createSphere(radius, 20);
+
 
 
 	int flip = 0;
 
+	
 	/*updatePositionsEuler(fbo1_2, fbo2_2, fbo5, fbo4);
 	useFBO(0L, fbo1_2, 0L);
 	flip = 1;*/
@@ -331,7 +345,7 @@ int main()
 
 		/*** TEST: Apply a texture from fbo to fabric.***/
 		//Update the positions of the fabric
-
+		glEnable(GL_DEPTH_TEST);
 		sphereShader.use();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -351,6 +365,7 @@ int main()
 		glm::mat4 model2(1.0f);
 		//model2 = glm::rotate(model2, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		model2 = glm::translate(model2, glm::vec3(0.0f, -1.0f, 0.0f));
+		model2 = model2 * rot;
 		sphereShader.setMat4("model", model2);
 
 		sphere.render();
@@ -373,12 +388,14 @@ int main()
 
 		glm::mat4 model(1.0f);
 		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+		model = model * rot;
 		
 		testShader.setMat4("model", model);
 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		f.render();
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		///*useFBO(0L, fbo5, 0L);
 		//drawScreenQuad(plainShader);*/
 
@@ -392,6 +409,7 @@ int main()
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
+		glDisable(GL_DEPTH_TEST);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
@@ -493,6 +511,18 @@ void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3)
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
+void updateRot(int dir) {
+	float timer = deltaTime * dir;
+	rot = glm::rotate(rot, glm::radians(timer * 100), glm::vec3(0.0f, 1.0f, 0.0f));
+
+}
+
+void moveSphere(int dir) {
+	float timer = deltaTime * dir;
+	rot = glm::rotate(rot, glm::radians(timer * 100), glm::vec3(0.0f, 1.0f, 0.0f));
+
+}
+
 void processInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -506,6 +536,10 @@ void processInput(GLFWwindow *window)
 		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+		updateRot(-1);
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+		updateRot(1);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
