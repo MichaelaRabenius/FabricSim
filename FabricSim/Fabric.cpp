@@ -14,6 +14,7 @@ Fabric::Fabric(float width, float height, int num_particles_width, int num_parti
 	ntris = 0;
 	positionarray = NULL;
 	velocityarray = NULL;
+	texturearray = NULL;
 	/********************************************/
 }
 
@@ -21,6 +22,8 @@ Fabric::~Fabric()
 {
 	clean();
 }
+
+
 
 void Fabric::Create_Fabric()
 {
@@ -35,11 +38,13 @@ void Fabric::Create_Fabric()
 
 	positionarray = new GLfloat[4 * nverts];
 	velocityarray = new GLfloat[4 * nverts];
+	texturearray = new GLfloat[4 * nverts];
 
 	int idx = 0;
 	int idx2 = 0;
 	//particles.resize(num_particles_height * num_particles_width);
 	//Create the particles
+	int black = 0;
 	for (int y = 0; y < num_particles_height; ++y) {
 		for (int x = 0; x < num_particles_width; ++x) {
 
@@ -64,7 +69,7 @@ void Fabric::Create_Fabric()
 			vertexarray[idx + 6] = x / (float)(num_particles_width) + (1 / (float)(num_particles_width * 2));
 			vertexarray[idx + 7] = y / (float)(num_particles_height) + (1 / (float)(num_particles_height * 2));
 			
-			int a = 0;
+			
 			//Insert initial velocities for each particle
 			//Initially we start at velocity = 0
 			velocityarray[idx2] = 0.0f;
@@ -75,14 +80,30 @@ void Fabric::Create_Fabric()
 			/*velocityarray[idx + 3] = x / (float)num_particles_width;
 			velocityarray[idx + 4] = y / (float)num_particles_height;*/
 
-			if (y == num_particles_height - 1) {
-				//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
-				positionarray[idx2 + 3] = 1.0f;
-				velocityarray[idx2 + 3] = 1.0f;
-			}
+			//if (y == num_particles_height - 1) {
+			//	//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
+			//	positionarray[idx2 + 3] = 1.0f;
+			//	velocityarray[idx2 + 3] = 1.0f;
+			//}
+			//else {
+			//	positionarray[idx2 + 3] = 0.0f;
+			//	velocityarray[idx2 + 3] = 0.0f;
+			//}
+			Compute_Edge_Values(x, y, idx2 + 3);
+			
+			if (black == 0) {
+				texturearray[idx2] = 1.0f;
+				texturearray[idx2 + 1] = 1.0f;
+				texturearray[idx2 + 2] = 1.0f;
+				texturearray[idx2 + 3] = 1.0f;
+				black = 1;
+			} 
 			else {
-				positionarray[idx2 + 3] = 0.0f;
-				velocityarray[idx2 + 3] = 0.0f;
+				texturearray[idx2] = 0.0f;
+				texturearray[idx2 + 1] = 0.0f;
+				texturearray[idx2 + 2] = 0.0f;
+				texturearray[idx2 + 3] = 1.0f;
+				black = 0;
 			}
 
 
@@ -109,7 +130,7 @@ void Fabric::Create_Fabric()
 			indexarray[idx++] = y * num_particles_height + x + 1; // lower right
 			indexarray[idx++] = (y + 1) * num_particles_height + x; // upper left
 
-			//secon triangle
+			//second triangle
 			//	1. O___O 3.
 			//		\  |
 			//		 \ |
@@ -200,6 +221,12 @@ void Fabric::clean()
 	if (velocityarray) {
 		delete[] velocityarray;
 	}
+	if (positionarray) {
+		delete[] positionarray;
+	}
+	if (texturearray) {
+		delete[] texturearray;
+	}
 
 	nverts = 0;
 	ntris = 0;
@@ -211,6 +238,42 @@ void Fabric::render()
 	glDrawElements(GL_TRIANGLES, 3 * ntris, GL_UNSIGNED_INT, (void*)0);
 	// (mode, vertex count, type, element array buffer offset)
 	glBindVertexArray(0);
+}
+
+void Fabric::Compute_Edge_Values(int x, int y, int idx)
+{	
+	//upper side
+	if (y == num_particles_height - 1) {
+		//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
+		positionarray[idx] = 1.0f;
+		velocityarray[idx] = 1.0f;
+	}
+	else if (x == num_particles_width - 1) {
+		//right side
+		positionarray[idx] = 2.0f;
+		velocityarray[idx] = 2.0f;
+	}
+	else if(y == 0) {
+		//lower side
+		positionarray[idx] = 3.0f;
+		velocityarray[idx] = 3.0f;
+	}
+	else if (x == 0) {
+		//left side
+		positionarray[idx] = 4.0f;
+		velocityarray[idx] = 4.0f;
+	}
+	else {
+		positionarray[idx] = 0.0f;
+		velocityarray[idx] = 0.0f;
+	}
+	
+	//Pinned particles
+	if (y == num_particles_height - 1) {
+		//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
+		positionarray[idx] = 5.0f;
+		velocityarray[idx] = 5.0f;
+	}
 }
 
 /*

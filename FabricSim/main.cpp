@@ -30,7 +30,7 @@ const unsigned int SCR_HEIGHT = 800;
 
 
 // camera
-Camera camera(glm::vec3(0.0f, -1.0f, 2.0f));
+Camera camera(glm::vec3(0.0f, -1.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -43,9 +43,9 @@ float lastFrame = 0.0f;
 /***** Declare Framebuffer objects. ******/
 //We're gonna need 4 of them for pingponging
 //2 for positions, 2 for velocites
-FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *fbo1_2, *fbo2_2, *fbo3_2;
+FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *fbo1_2, *fbo2_2, *fbo3_2, *normalfbo;
 
-Shader plainShader, velocityShader, positionShader, positionShader2, testShader;
+Shader plainShader, velocityShader, positionShader, positionShader2, testShader, normalShader;
 
 
 /*** Screen quad ***/
@@ -66,8 +66,8 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 1;
 float fabric_height = 1;
-GLsizei num_particles_width = 21;
-GLsizei num_particles_height = 21;
+GLsizei num_particles_width = 30;
+GLsizei num_particles_height = 30;
 
 
 /***** Function Declarations *****/
@@ -140,6 +140,7 @@ int main()
 	positionShader.init("shaders/position.vert", "shaders/position.frag");
 	positionShader2.init("shaders/position2.vert", "shaders/position2.frag");
 	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
+	normalShader.init("shaders/normal.vert", "shaders/normal.frag");
 
 	//Here is one way we can bind a texture to the shader
 	//This will probably be more relevant when the shader needs more than one texture
@@ -159,6 +160,8 @@ int main()
 	//Create textures containing velocities, initially zero
 	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
 	GLuint velocity_texture2 = generateTextureFromData(f.velocityarray);
+
+	GLuint checker_texture = generateTextureFromData(f.texturearray);
 
 	/***** Pass texture offsets to velocity shader *******/
 	float offset_x = 1 / (float)num_particles_width;
@@ -212,6 +215,8 @@ int main()
 	fbo1_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo2_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo3_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
+	
+	normalfbo = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 
 	drawTextureToFBO(fbo1, position_texture1);
 	drawTextureToFBO(fbo2, position_texture2);
@@ -222,6 +227,9 @@ int main()
 	drawTextureToFBO(fbo1_2, position_texture1);
 	drawTextureToFBO(fbo2_2, position_texture2);
 	drawTextureToFBO(fbo3_2, position_texture3);
+
+	drawTextureToFBO(normalfbo, checker_texture); // texture should contain normals.
+
 	useFBO(0L, fbo1, 0L);
 
 	
@@ -233,10 +241,10 @@ int main()
 	int idx2 = 0;
 	int idx3 = 0;
 	for (int i = 0; i < num_particles_height * num_particles_width; i++) {
-		//std::cout << "positionarray: " << f.positionarray[idx3] << " ";
-		//std::cout << f.positionarray[idx3 + 1] << " ";
-		////std::cout << f.positionarray[idx + 2] << " ";
-		//std::cout << f.positionarray[idx3 + 2] << std::endl;
+		/*std::cout << "positionarray: " << f.positionarray[idx3] << " ";
+		std::cout << f.positionarray[idx3 + 1] << " ";
+		std::cout << f.positionarray[idx3 + 2] << " ";*/
+		//std::cout << f.positionarray[idx3 + 3] << std::endl;
 
 		//std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
 		//std::cout << f.velocityarray[idx3 + 1] << " ";
@@ -264,7 +272,7 @@ int main()
 
 		//idx += 8;
 		//idx2 += 3;
-		//idx3 += 4;
+		idx3 += 4;
 	}
 
 	int flip = 0;
@@ -288,7 +296,6 @@ int main()
 		// -----
 		processInput(window);
 
-		
 
 		//Every other turn, ping pong to the other buffer, using Euler integration
 		/*if (flip == 0) {
@@ -315,6 +322,9 @@ int main()
 		/*** TEST: Apply a texture from fbo to fabric.***/
 		//Update the positions of the fabric
 		testShader.use();
+		glUniform1i(glGetUniformLocation(testShader.ID, "positionTexture"), 0);
+		glUniform1i(glGetUniformLocation(testShader.ID, "normalTexture"), 1);
+
 		
 		glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -337,10 +347,10 @@ int main()
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		/*** TEST: draw only texture to screen***/
-		/*updatePositionsVerlet(fbo1, fbo2, fbo3);
-		useFBO(0L, fbo1, 0L);*/
-		//drawScreenQuad(plainShader);
-
+		//updatePositionsVerlet(fbo1, fbo2, fbo3);
+		/*useFBO(0L, normalfbo, 0L);
+		drawScreenQuad(plainShader);
+*/
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -425,20 +435,20 @@ void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3)
 	useFBO(pos1, pos2, pos3); //Render to fbo1, without any input
 	drawScreenQuad(positionShader2); //draw the texture
 
-	//positionShader2.use();
-	//glUniform1i(glGetUniformLocation(positionShader.ID, "positionTexture"), 0);
-	//glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 1);
-	//glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
-	//useFBO(pos1, pos2, pos3, fbo5); //Render to fbo1, without any input
-	//drawScreenQuad(positionShader2); //draw the texture
-
 	// 2. update the fbo storing the old texture with the current texture
 	plainShader.use();
 	useFBO(pos3, pos2, 0L);
 	drawScreenQuad(plainShader);
 
+	// 3. update the normals
+	/*normalShader.use();
+	glUniform1i(glGetUniformLocation(normalShader.ID, "positionTexture"), 0);
+	useFBO(normalfbo, pos1, 0L);
+	drawScreenQuad(normalShader);*/
+
+
 	//draw to screen
-	useFBO(0L, pos1, 0L);
+	useFBO(0L, pos1, normalfbo);
 }
 
 

@@ -42,26 +42,28 @@ void main()
     vec3 F = calculateInternalForces();
 
     float mass = 0.01;
-    vec3 gravity = vec3(0.0f, -0.82f, 0.0f); //simple gravitational pull
+    vec3 gravity = vec3(0.0f, -1.82f, 0.0f); //simple gravitational pull
     vec3 wind = vec3(0.0f, 0.0f, 0.3f);
-    vec3 acceleration = (F + gravity + wind) / mass;
+    vec3 acceleration = (F + gravity) / mass;
 
     //Euler integration
-    vec3 speed = current_speed + acceleration * dt;
-    vec3 pos = current_pos + speed * dt;
+    // vec3 speed = current_speed + acceleration * dt;
+    // vec3 pos = current_pos + speed * dt;
     
+
+    //Verlet integration
+    vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
+
+    //collision detection
     vec3 dist_to_sphere = pos - center;
     if(length(dist_to_sphere) <= radius ) {
         pos = current_pos;
     }
 
-    //Verlet integration
-    //vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
-
     //check if the point is pinned. If it is, do not move it
-    // if(pinned == 1.0) {
-    //     pos = current_pos;
-    // }
+    if(pinned == 5.0) {
+        pos = current_pos;
+    }
 
 	FragColor = vec4(pos, pinned);
     //FragColor = vec4(F, pinned);
@@ -147,7 +149,7 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 57.0, kd = -0.21f; //constants
+    float ks = 50.0, kd = -0.25f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));

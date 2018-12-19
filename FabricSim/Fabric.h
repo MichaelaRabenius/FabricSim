@@ -18,6 +18,8 @@ public:
 	/* Draw the fabric */
 	void render();
 
+	void Compute_Edge_Values(int x, int y, int idx);
+
 	float width; 
 	float height;
 	int num_particles_width; // number of particles in "width" direction
@@ -35,6 +37,7 @@ public:
 
 	GLfloat *positionarray;
 	GLfloat *velocityarray;
+	GLfloat *texturearray;
 
 	void printError(const char *errtype, const char *errmsg);
 	
