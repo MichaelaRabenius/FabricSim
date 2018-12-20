@@ -9,11 +9,8 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-// I should modelview and projection matrices to this shader...
-
 void main()
 {   
     gl_Position = projection * view * model * vec4(in_Position, 1.0f);
-    //gl_Position = vec4(in_Position, 1.0f);
     TexCoords = in_TexCoords;
 }  

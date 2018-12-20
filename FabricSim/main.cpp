@@ -133,7 +133,7 @@ int main()
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
-	f.Set_Pinned(AllCorners);
+	f.Set_Pinned(UpperCorners);
 	f.Create_Fabric();
 
 	// Create textures from the position data in Fabric.
@@ -228,7 +228,7 @@ int main()
 		// Draw the fabric
 		testShader.use();
 		glUniform1i(glGetUniformLocation(testShader.ID, "positionTexture"), 0);
-		glUniform1i(glGetUniformLocation(testShader.ID, "normalTexture"), 1);
+		glUniform1i(glGetUniformLocation(testShader.ID, "stripedTexture"), 1);
 
 		// Pass projection and modelview matrices to the fabric shader.
 		testShader.setMat4("projection", projection);

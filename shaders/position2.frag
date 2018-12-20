@@ -42,15 +42,14 @@ void main()
     vec3 gravity = vec3(0.0f, -0.981f, 0.0f); //simple gravitational pull
     vec3 wind = vec3(0.0f, 0.0f, 0.9f);
     
-    F += gravity * mass; // + (current_speed * damping);
+    F += gravity * mass + (current_speed * mass * damping); //Add default damping on momentum
 
-    vec3 acceleration =( (F) / mass);
+    vec3 acceleration = (F / mass);
 
     //Euler integration
     // vec3 speed = current_speed + acceleration * dt;
     // vec3 pos = current_pos + speed * dt;
     
-
     //Verlet integration
     vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
 
