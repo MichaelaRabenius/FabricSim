@@ -154,7 +154,7 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 30.75, kd = -0.25f; //constants
+    float ks = 100.75, kd = -0.25f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));

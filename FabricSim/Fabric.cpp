@@ -68,7 +68,9 @@ void Fabric::Create_Fabric()
 			//Insert texture coordinates
 			vertexarray[idx + 6] = x / (float)(num_particles_width) + (1 / (float)(num_particles_width * 2));
 			vertexarray[idx + 7] = y / (float)(num_particles_height) + (1 / (float)(num_particles_height * 2));
+
 			
+
 			
 			//Insert initial velocities for each particle
 			//Initially we start at velocity = 0

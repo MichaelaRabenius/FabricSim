@@ -69,8 +69,8 @@ GLuint quadVAO;
 /***** The size of the fabric in particles *****/
 float fabric_width = 2;
 float fabric_height = 2;
-GLsizei num_particles_width = 40;
-GLsizei num_particles_height = 40;
+GLsizei num_particles_width = 50;
+GLsizei num_particles_height = 50;
 
 bool wireframe_mode = false;
 
@@ -147,14 +147,14 @@ int main()
 
 	/************** Create and compile shaders *****************/
 	//Shader plainShader("plaintextureshader.vert", "plaintextureshader.frag");
-	plainShader.init("shaders/plaintextureshader.vert", "shaders/plaintextureshader.frag");
+	plainShader.init("../shaders/plaintextureshader.vert", "../shaders/plaintextureshader.frag");
 	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
-	velocityShader.init("shaders/velocity.vert", "shaders/velocity.frag");
-	positionShader.init("shaders/position.vert", "shaders/position.frag");
-	positionShader2.init("shaders/position2.vert", "shaders/position2.frag");
-	testShader.init("shaders/testshader.vert", "shaders/testshader.frag");
-	normalShader.init("shaders/normal.vert", "shaders/normal.frag");
-	sphereShader.init("shaders/plain.vert", "shaders/plain.frag");
+	velocityShader.init("../shaders/velocity.vert", "../shaders/velocity.frag");
+	positionShader.init("../shaders/position.vert", "../shaders/position.frag");
+	positionShader2.init("../shaders/position2.vert", "../shaders/position2.frag");
+	testShader.init("../shaders/testshader.vert", "../shaders/testshader.frag");
+	normalShader.init("../shaders/normal.vert", "../shaders/normal.frag");
+	sphereShader.init("../shaders/plain.vert", "../shaders/plain.frag");
 
 	//Here is one way we can bind a texture to the shader
 	//This will probably be more relevant when the shader needs more than one texture
@@ -180,6 +180,13 @@ int main()
 	/***** Pass texture offsets to velocity shader *******/
 	float offset_x = 1 / (float)num_particles_width;
 	float offset_y = 1 / (float)num_particles_height;
+
+	float rest_dist_x = fabric_width / (float)(num_particles_width - 1);
+	float rest_dist_y = fabric_height / (float)(num_particles_height - 1);
+	float rest_dist_d = sqrt(rest_dist_x*rest_dist_x + rest_dist_y * rest_dist_y);
+
+	glm::vec3 rest_distances(rest_dist_x, rest_dist_y, rest_dist_d);
+
 	float rest_dist = fabric_width / (float)(num_particles_width - 1);
 	float rest_dist2 = sqrt(rest_dist*rest_dist + rest_dist*rest_dist);
 	float rest_dist3 = 2.0f * rest_dist;
@@ -209,14 +216,9 @@ int main()
 	unsigned int yLoc2 = glGetUniformLocation(positionShader2.ID, "texture_offset_y");
 	glUniform1f(yLoc2, offset_y);
 
-	unsigned int rLoc12 = glGetUniformLocation(positionShader2.ID, "rest_dist");
-	glUniform1f(rLoc12, rest_dist);
+	unsigned int restLoc = glGetUniformLocation(positionShader2.ID, "rest_distances");
+	glUniform3fv(restLoc, 1, glm::value_ptr(rest_distances));
 
-	unsigned int rLoc22 = glGetUniformLocation(positionShader2.ID, "rest_dist2");
-	glUniform1f(rLoc22, rest_dist2);
-
-	unsigned int rLoc32 = glGetUniformLocation(positionShader2.ID, "rest_dist3");
-	glUniform1f(rLoc32, rest_dist3);
 
 
 	/*********** set up frame buffer objects *****************/
@@ -389,7 +391,7 @@ int main()
 
 
 		glm::mat4 model(1.0f);
-		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 		model = model * rot;
 		

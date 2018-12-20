@@ -3,88 +3,82 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
+uniform sampler2D oldVelocityTexture;
 uniform sampler2D positionTexture;
-uniform sampler2D oldpositionTexture;
-uniform sampler2D normalTexture;
+//uniform float timestep;
 
+// texture size is 800x800, thus the offset to a neighboring texel should be 1/800?
+//float texture_offset = 0.00125f;
 uniform float texture_offset_x;
 uniform float texture_offset_y; 
 uniform float rest_dist;
 uniform float rest_dist2;
 uniform float rest_dist3;
 
-uniform float dt = 0.01;
 
-uniform ivec2 resolution;
+float texture_offset = 0.05;
 
-uniform float radius = 0.2;
-uniform vec3 center = vec3(0.0, -1.0, 0.0);
-
-uniform float damping = -0.0125f;
-
-/*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces();
 
-//Calculates the speed of a neighboring particle from the position textures and uses it it to compute the force
-//on the current particle 
-vec3 getForceFromTexture(vec3 accumulated_force, vec3 current_pos, vec3 current_speed, vec2 texcoords, float r);
-
 vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3 neighbor_speed, float r);
 
-/*** MAIN ***/
+
 void main()
 {
-    float pinned = texture(positionTexture, TexCoords).w;
-    vec3 current_pos = texture(positionTexture, TexCoords).rgb;
-    vec3 old_pos = texture(oldpositionTexture, TexCoords).rgb;
+    //Provisional time step
+    float dt = 0.01;
 
-    vec3 current_speed = (current_pos - old_pos) / dt;
+    //Same question, is our texture vec3 or vec4
+    vec4 velocityData = texture(oldVelocityTexture, TexCoords);
+    vec3 oldVelocity = velocityData.rgb;
+    vec3 pos = texture(positionTexture, TexCoords - vec2(texture_offset, 0.0f)).rgb;
 
-    vec3 F = calculateInternalForces();
-
-    float mass = 0.1;
-    vec3 gravity = vec3(0.0f, -0.981f, 0.0f); //simple gravitational pull
-    vec3 wind = vec3(0.0f, 0.0f, 0.9f);
+    // In reality, the fabric is going to be affected by both internal and external forces.
+    // Therefore we must calculate the acceleration from F = m*a
+    // where F = F_internal + F_external(such as wind and gravity)
     
-    F += gravity * mass; // + (current_speed * damping);
+    //mass of particle
+    float mass = 1.0f;
 
-    vec3 acceleration =( (F) / mass);
+    vec3 internal_force = calculateInternalForces();
 
-    //Euler integration
-    // vec3 speed = current_speed + acceleration * dt;
-    // vec3 pos = current_pos + speed * dt;
+    //External forces
+    vec3 wind = vec3(0.03f, 0.0f, 0.3f); // for testing only
+    vec3 gravity = vec3(0.0f, -0.1f, 0.0f); //simple gravitational pull
+
+    vec3 acceleration = (gravity + internal_force) / mass;
     
-
-    //Verlet integration
-    vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
-
-    //collision detection
-    // vec3 dist_to_sphere = pos - center;
-    // if(length(dist_to_sphere) <= radius + 0.015 ) {
-    //     pos = current_pos;
-    // }
-
-    //check if the point is pinned. If it is, do not move it
-    if(pinned == 5.0) {
-        pos = current_pos;
+    if(velocityData.w == 1.0) {
+        acceleration = vec3(0.0f, 0.0f, 0.0f);
     }
 
-	FragColor = vec4(pos, pinned);
-    //FragColor = vec4(F, pinned);
-    //FragColor = vec4(1.0, 0.0, 1.0, pinned);
-} 
+    // integrate
+    vec3 newVelocity = oldVelocity + acceleration * dt;
 
+    FragColor = vec4(newVelocity, velocityData.w);
 
-/*** FUNCTION IMPLEMENTATIONS ***/
+}
+
+vec3 getForceFromTexture(vec3 accumulated_force, vec3 current_pos, vec3 current_speed, vec2 texcoords, float r){
+     
+    if(texcoords.x >= 0 && texcoords.x <= 1 && texcoords.y >= 0 && texcoords.y <= 1) {
+        vec3 neighbor_pos = texture(positionTexture, texcoords).rgb;
+        vec3 neighbor_speed = texture(oldVelocityTexture, texcoords).rgb;
+        accumulated_force += neighborForce(current_pos, current_speed, neighbor_pos, neighbor_speed, r);
+
+    }
+    
+    return accumulated_force;
+}
+
 
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces() {
 
     //Current position and velocity
     vec3 current_pos = texture(positionTexture, TexCoords).rgb;
-    vec3 old_pos = texture(oldpositionTexture, TexCoords).rgb;
-    vec3 current_speed = (old_pos - current_pos) / dt;
+    vec3 current_speed = texture(oldVelocityTexture, TexCoords).rgb;
 
     //compute neighbouring texture coordinates
     vec2 right = TexCoords + vec2(texture_offset_x, 0.0f);
@@ -95,11 +89,11 @@ vec3 calculateInternalForces() {
     //1. the 4-Neighborhood (i.e. the 4 closest neighbors)
     vec3 force1 = vec3(0.0, 0.0, 0.0);
 
-    
     force1 = getForceFromTexture(force1, current_pos, current_speed, right, rest_dist);
     force1 = getForceFromTexture(force1, current_pos, current_speed, left, rest_dist);
     force1 = getForceFromTexture(force1, current_pos, current_speed, up, rest_dist);
     force1 = getForceFromTexture(force1, current_pos, current_speed, down, rest_dist);
+
 
     //2. the 8-Neighborhood (i.e. the 8 closest neighbors)
     //compute neighbouring texture coordinates
@@ -133,31 +127,15 @@ vec3 calculateInternalForces() {
     return result_force;
 }
 
-vec3 getForceFromTexture(vec3 accumulated_force, vec3 current_pos, vec3 current_speed, vec2 texcoords, float r){
-     
-    if(texcoords.x > 0 && texcoords.x < 1 && texcoords.y > 0 && texcoords.y < 1) {
-        vec3 neighbor_pos = texture(positionTexture, texcoords).rgb;
-        vec3 old_neighbor_pos = texture(oldpositionTexture, texcoords).rgb;
-        vec3 neighbor_speed = (neighbor_pos - old_neighbor_pos) / dt;
-        accumulated_force += neighborForce(current_pos, current_speed, neighbor_pos, neighbor_speed, r);
-
-        //accumulated_force = vec3(0.0, 0.0, 0.1);
-
-    }
-    
-    return accumulated_force;
-}
-
 vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3 neighbor_speed, float r) {
     //Calculate distance to the neighbor
     vec3 dist = current_pos - neighbor_pos;
 
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
-    float ks = 30.75, kd = -0.25f; //constants
+    float ks = 10.0, kd = 0.01f; //constants
 
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));
-    //vec3 internal_force = vec3(0.4, 0.2, 0.7);
     return internal_force;
 }
