@@ -13,7 +13,6 @@ Fabric::Fabric(float width, float height, int num_particles_width, int num_parti
 	nverts = 0;
 	ntris = 0;
 	positionarray = NULL;
-	velocityarray = NULL;
 	texturearray = NULL;
 	/********************************************/
 }
@@ -22,8 +21,6 @@ Fabric::~Fabric()
 {
 	clean();
 }
-
-
 
 void Fabric::Create_Fabric()
 {
@@ -37,7 +34,6 @@ void Fabric::Create_Fabric()
 	indexarray = new GLuint[3 * ntris];
 
 	positionarray = new GLfloat[4 * nverts];
-	velocityarray = new GLfloat[4 * nverts];
 	texturearray = new GLfloat[4 * nverts];
 
 	int idx = 0;
@@ -69,30 +65,10 @@ void Fabric::Create_Fabric()
 			vertexarray[idx + 6] = x / (float)(num_particles_width) + (1 / (float)(num_particles_width * 2));
 			vertexarray[idx + 7] = y / (float)(num_particles_height) + (1 / (float)(num_particles_height * 2));
 
+			// Compute which particles should be pinned
+			Compute_Pinned_Values(x, y, idx2 + 3);
 			
-
-			
-			//Insert initial velocities for each particle
-			//Initially we start at velocity = 0
-			velocityarray[idx2] = 0.0f;
-			velocityarray[idx2 + 1] = 0.0f;
-			velocityarray[idx2 + 2] = 0.0f;
-
-			// insert texture coordinates
-			/*velocityarray[idx + 3] = x / (float)num_particles_width;
-			velocityarray[idx + 4] = y / (float)num_particles_height;*/
-
-			//if (y == num_particles_height - 1) {
-			//	//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
-			//	positionarray[idx2 + 3] = 1.0f;
-			//	velocityarray[idx2 + 3] = 1.0f;
-			//}
-			//else {
-			//	positionarray[idx2 + 3] = 0.0f;
-			//	velocityarray[idx2 + 3] = 0.0f;
-			//}
-			Compute_Edge_Values(x, y, idx2 + 3);
-			
+			//generate a black white texture
 			if (black == 0) {
 				texturearray[idx2] = 1.0f;
 				texturearray[idx2 + 1] = 1.0f;
@@ -184,8 +160,7 @@ void Fabric::Create_Fabric()
 	// Activate the index buffer
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuffer);
 	// Present our vertex indices to OpenGL
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		3 * ntris * sizeof(GLuint), indexarray, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * ntris * sizeof(GLuint), indexarray, GL_STATIC_DRAW);
 
 	// Deactivate (unbind) the VAO and the buffers again.
 	// Do NOT unbind the buffers while the VAO is still bound.
@@ -196,7 +171,7 @@ void Fabric::Create_Fabric()
 }
 
 
-
+// Deallocate data
 void Fabric::clean()
 {
 	if (glIsVertexArray(vao)) {
@@ -220,9 +195,6 @@ void Fabric::clean()
 	if (indexarray) {
 		delete[] indexarray;
 	}
-	if (velocityarray) {
-		delete[] velocityarray;
-	}
 	if (positionarray) {
 		delete[] positionarray;
 	}
@@ -234,6 +206,7 @@ void Fabric::clean()
 	ntris = 0;
 }
 
+// Draw the fabric
 void Fabric::render()
 {
 	glBindVertexArray(vao);
@@ -242,47 +215,83 @@ void Fabric::render()
 	glBindVertexArray(0);
 }
 
-void Fabric::Compute_Edge_Values(int x, int y, int idx)
-{	
-	//upper side
-	if (y == num_particles_height - 1) {
-		//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
-		positionarray[idx] = 1.0f;
-		velocityarray[idx] = 1.0f;
-	}
-	else if (x == num_particles_width - 1) {
-		//right side
-		positionarray[idx] = 2.0f;
-		velocityarray[idx] = 2.0f;
-	}
-	else if(y == 0) {
-		//lower side
-		positionarray[idx] = 3.0f;
-		velocityarray[idx] = 3.0f;
-	}
-	else if (x == 0) {
-		//left side
-		positionarray[idx] = 4.0f;
-		velocityarray[idx] = 4.0f;
-	}
-	else {
-		positionarray[idx] = 0.0f;
-		velocityarray[idx] = 0.0f;
-	}
-	
-	//Pinned particles
-	if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
-		//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
-		positionarray[idx] = 5.0f;
-		velocityarray[idx] = 5.0f;
-	}
+// Set which particles should be pinned
+void Fabric::Set_Pinned(Pinned pin)
+{
+	pinned_particles = pin;
 }
 
-/*
-* private
-* printError() - Signal an error.
-* Simple printf() to console for portability.
-*/
-void Fabric::printError(const char *errtype, const char *errmsg) {
-	fprintf(stderr, "%s: %s\n", errtype, errmsg);
+// Compute which particles should be pinned
+void Fabric::Compute_Pinned_Values(int x, int y, int idx)
+{
+	positionarray[idx] = 0.0f;
+
+	switch (pinned_particles) {
+	case None:
+		positionarray[idx] = 0.0f;
+		break;
+	case UpperLeftCorner:
+		if ((x == 0 && y == num_particles_height - 1)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case UpperRightCorner:
+		if ((x == num_particles_width - 1 && y == num_particles_height - 1)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case LowerLeftCorner:
+		if (x == 0 && y == 0) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case LowerRightCorner:
+		if (x == num_particles_width - 1 && y == 0) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case UpperCorners:
+		if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case LowerCorners:
+		if ((x == 0 && y == 0) || (x == num_particles_width - 1 && y == 0)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case AllCorners:
+		if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1) ||
+			(x == 0 && y == 0) || (x == num_particles_width - 1 && y == 0)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case UpperEdge:
+		if (y == num_particles_height - 1) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case LowerEdge:
+		if (y == 0) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case RightEdge:
+		if (x == num_particles_width - 1) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case LeftEdge:
+		if (x == 0) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	case Diagonal:
+		if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == 0)) {
+			positionarray[idx] = 1.0f;
+		}
+		break;
+	default:
+		positionarray[idx] = 0.0f;
+	}
 }

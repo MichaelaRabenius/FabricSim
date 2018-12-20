@@ -133,6 +133,7 @@ int main()
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
+	f.Set_Pinned(AllCorners);
 	f.Create_Fabric();
 
 	// Create textures from the position data in Fabric.
@@ -159,7 +160,6 @@ int main()
 	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_x"), offset_x);
 	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_y"), offset_y);
 	glUniform3fv(glGetUniformLocation(positionShader2.ID, "rest_distances"), 1, glm::value_ptr(rest_distances));
-
 
 	/*********** set up frame buffer objects *****************/
 	fbo1 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);

@@ -61,7 +61,7 @@ void main()
     }
 
     //check if the point is pinned. If it is, do not move it
-    if(pinned == 5.0) {
+    if(pinned == 1.0) {
         pos = current_pos;
     }
 
