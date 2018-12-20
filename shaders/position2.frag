@@ -5,21 +5,16 @@ in vec2 TexCoords;
 
 uniform sampler2D positionTexture;
 uniform sampler2D oldpositionTexture;
-uniform sampler2D normalTexture;
 
 uniform float texture_offset_x;
 uniform float texture_offset_y; 
 uniform vec3 rest_distances;
 
-
-uniform float dt = 0.01;
-
-uniform ivec2 resolution;
-
 uniform float radius = 0.2;
 uniform vec3 center = vec3(0.0, -1.0, 0.0);
 
-uniform float damping = -0.0125f;
+uniform float dt = 0.01;
+uniform float damping = -0.0125f; //default damping as per suggestion
 
 /*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles
@@ -29,6 +24,7 @@ vec3 calculateInternalForces();
 //on the current particle 
 vec3 getForceFromTexture(vec3 accumulated_force, vec3 current_pos, vec3 current_speed, vec2 texcoords, float r);
 
+//Calculates the force from 1 neighbor
 vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3 neighbor_speed, float r);
 
 /*** MAIN ***/
@@ -65,13 +61,11 @@ void main()
     }
 
     //check if the point is pinned. If it is, do not move it
-    // if(pinned == 5.0) {
-    //     pos = current_pos;
-    // }
+    if(pinned == 5.0) {
+        pos = current_pos;
+    }
 
 	FragColor = vec4(pos, pinned);
-    //FragColor = vec4(F, pinned);
-    //FragColor = vec4(1.0, 0.0, 1.0, pinned);
 } 
 
 

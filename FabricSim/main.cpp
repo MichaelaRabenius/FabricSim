@@ -1,34 +1,21 @@
-#define  GLM_ENABLE_EXPERIMENTAL
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "glm/ext.hpp"
-#include "glm/gtx/string_cast.hpp"
 
+#include "GL_utilities.h"
 #include "Sphere.h"
 #include "Shader.h"
 #include "Fabric.h"
 #include "Camera.h"
 
 
-#include "GL_utilities.h"
-#include <iostream>
-#include <iomanip>
-#include <string>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
-
-// settings
+/**** Settings ****/
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
-
 
 // camera
 Camera camera(glm::vec3(0.0f, -1.0f, 4.0f));
@@ -36,6 +23,7 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
+// world rotation
 glm::mat4 rot(1.0);
 
 // timing
@@ -43,12 +31,10 @@ float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
 
-/***** Declare Framebuffer objects. ******/
-//We're gonna need 4 of them for pingponging
-//2 for positions, 2 for velocites
-FBOstruct *fbo1, *fbo2, *fbo3, *fbo4, *fbo5, *fbo1_2, *fbo2_2, *fbo3_2, *normalfbo;
+/***** Declare Framebuffer objects and shaders. ******/
+FBOstruct *fbo1, *fbo2, *fbo3, *fbo4;
 
-Shader plainShader, velocityShader, positionShader, positionShader2, testShader, normalShader, sphereShader;
+Shader plainShader, positionShader2, testShader, sphereShader;
 
 
 /*** Screen quad ***/
@@ -83,12 +69,13 @@ Sphere sphere;
 
 /***** Function Declarations *****/
 GLuint generateTextureFromData(GLfloat * data);
-
-void updatePositionsEuler(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOstruct * vel2);
 void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3);
-
 void drawTextureToFBO(FBOstruct *fbo, GLuint texture);
 void drawScreenQuad(Shader shader);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void processInput(GLFWwindow *window);
 
 
 int main()
@@ -105,7 +92,6 @@ int main()
 #endif
 
 	// glfw window creation
-	// --------------------
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Fabric Simulator", NULL, NULL);
 	if (window == NULL)
 	{
@@ -119,14 +105,11 @@ int main()
 	glfwSetScrollCallback(window, scroll_callback);
 
 	// glad: load all OpenGL function pointers
-	// ---------------------------------------
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
-
-	
 
 	/********** set up screen quad **********/
 	// screen quad VAO
@@ -141,201 +124,73 @@ int main()
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-	/*********** Model view and projection matrices ************/
-
-
 
 	/************** Create and compile shaders *****************/
-	//Shader plainShader("plaintextureshader.vert", "plaintextureshader.frag");
 	plainShader.init("../shaders/plaintextureshader.vert", "../shaders/plaintextureshader.frag");
-	//Shader phongShader("shaders/phong.vert", "shaders/phong.frag");
-	velocityShader.init("../shaders/velocity.vert", "../shaders/velocity.frag");
-	positionShader.init("../shaders/position.vert", "../shaders/position.frag");
 	positionShader2.init("../shaders/position2.vert", "../shaders/position2.frag");
 	testShader.init("../shaders/testshader.vert", "../shaders/testshader.frag");
-	normalShader.init("../shaders/normal.vert", "../shaders/normal.frag");
 	sphereShader.init("../shaders/plain.vert", "../shaders/plain.frag");
-
-	//Here is one way we can bind a texture to the shader
-	//This will probably be more relevant when the shader needs more than one texture
-	//plainShader.use();
-	//plainShader.setInt("screenTexture", 0);
-
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
 	f.Create_Fabric();
 
-	//We must create textures from the position data in Fabric.
+	// Create textures from the position data in Fabric.
 	GLuint position_texture1 = generateTextureFromData(f.positionarray);
 	GLuint position_texture2 = generateTextureFromData(f.positionarray);
 	GLuint position_texture3 = generateTextureFromData(f.positionarray);
 
-	//Create textures containing velocities, initially zero
-	GLuint velocity_texture1 = generateTextureFromData(f.velocityarray);
-	GLuint velocity_texture2 = generateTextureFromData(f.velocityarray);
-
+	//Create texture with stripes
 	GLuint checker_texture = generateTextureFromData(f.texturearray);
 
-	/***** Pass texture offsets to velocity shader *******/
+	/***** Pass texture offsets to position shader *******/
 	float offset_x = 1 / (float)num_particles_width;
 	float offset_y = 1 / (float)num_particles_height;
 
+	//Calculate rest distances for horizontal, vertical and diagonal neighbors
 	float rest_dist_x = fabric_width / (float)(num_particles_width - 1);
 	float rest_dist_y = fabric_height / (float)(num_particles_height - 1);
 	float rest_dist_d = sqrt(rest_dist_x*rest_dist_x + rest_dist_y * rest_dist_y);
 
 	glm::vec3 rest_distances(rest_dist_x, rest_dist_y, rest_dist_d);
 
-	float rest_dist = fabric_width / (float)(num_particles_width - 1);
-	float rest_dist2 = sqrt(rest_dist*rest_dist + rest_dist*rest_dist);
-	float rest_dist3 = 2.0f * rest_dist;
-
-	//when using Euler, pass to velocity shader
-	velocityShader.use();
-	unsigned int xLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_x");
-	glUniform1f(xLoc, offset_x);
-
-	unsigned int yLoc = glGetUniformLocation(velocityShader.ID, "texture_offset_y");
-	glUniform1f(yLoc, offset_y);
-
-	unsigned int rLoc = glGetUniformLocation(velocityShader.ID, "rest_dist");
-	glUniform1f(rLoc, rest_dist);
-
-	unsigned int rLoc2 = glGetUniformLocation(velocityShader.ID, "rest_dist2");
-	glUniform1f(rLoc2, rest_dist2);
-
-	unsigned int rLoc3 = glGetUniformLocation(velocityShader.ID, "rest_dist3");
-	glUniform1f(rLoc3, rest_dist3);
-
 	//when using verlet, pass to position shader 2
 	positionShader2.use();
-	unsigned int xLoc2 = glGetUniformLocation(positionShader2.ID, "texture_offset_x");
-	glUniform1f(xLoc2, offset_x);
-
-	unsigned int yLoc2 = glGetUniformLocation(positionShader2.ID, "texture_offset_y");
-	glUniform1f(yLoc2, offset_y);
-
-	unsigned int restLoc = glGetUniformLocation(positionShader2.ID, "rest_distances");
-	glUniform3fv(restLoc, 1, glm::value_ptr(rest_distances));
-
+	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_x"), offset_x);
+	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_y"), offset_y);
+	glUniform3fv(glGetUniformLocation(positionShader2.ID, "rest_distances"), 1, glm::value_ptr(rest_distances));
 
 
 	/*********** set up frame buffer objects *****************/
-
 	fbo1 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo3 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 	fbo4 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
-	fbo5 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
-
-	fbo1_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
-	fbo2_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
-	fbo3_2 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
-	
-	normalfbo = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
 
 	drawTextureToFBO(fbo1, position_texture1);
 	drawTextureToFBO(fbo2, position_texture2);
 	drawTextureToFBO(fbo3, position_texture3);
-	drawTextureToFBO(fbo4, velocity_texture1);
-	drawTextureToFBO(fbo5, velocity_texture2);
-	
-
-	drawTextureToFBO(fbo1_2, position_texture1);
-	drawTextureToFBO(fbo2_2, position_texture2);
-	drawTextureToFBO(fbo3_2, position_texture3);
-
-	
-	drawTextureToFBO(normalfbo, checker_texture); // texture should contain normals.
-	
-	
-	useFBO(0L, fbo1, 0L);
-
+	drawTextureToFBO(fbo4, checker_texture); // stripes
 	
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	/*
-	int idx = 0;
-	int idx2 = 0;
-	int idx3 = 0;
-	for (int i = 0; i < num_particles_height * num_particles_width; i++) {
-		std::cout << "positionarray: " << f.positionarray[idx3] << " ";
-		std::cout << f.positionarray[idx3 + 1] << " ";
-		std::cout << f.positionarray[idx3 + 2] << " ";
-		std::cout << f.positionarray[idx3 + 3] << std::endl;
-
-		std::cout << "velocityarry: " << f.velocityarray[idx3] << " ";
-		std::cout << f.velocityarray[idx3 + 1] << " ";
-		//std::cout << f.velocityarray[idx + 2] << " ";
-		std::cout << f.velocityarray[idx3 + 2] << std::endl;
-
-		std::cout << "coordinates: ";
-		std::cout << f.vertexarray[idx] << " ";
-		std::cout << f.vertexarray[idx + 1] << " ";
-		std::cout << f.vertexarray[idx + 2] << " ";
-		std::cout << "             texture coordinates: ";
-		std::cout << f.vertexarray[idx + 6] << " ";
-		std::cout << f.vertexarray[idx + 7] << std::endl;
-
-
-
-		idx += 8;
-
-		std::string pos = "Position " + std::to_string(i) + ": " + std::to_string(f.vertexarray[idx]) + " " + std::to_string(f.vertexarray[idx+1]) + " " + std::to_string(f.vertexarray[idx + 2]);
-		std::string tri = "Triangle: "+ std::to_string(f.indexarray[idx2]) + " " + std::to_string(f.indexarray[idx2 + 1]) + " " + std::to_string(f.indexarray[idx2 + 2]);
-		std::string tex = "Texture: " + std::to_string(f.vertexarray[idx + 6]) + " " + std::to_string(f.vertexarray[idx + 7]);
-		
-
-		std::cout << std::left << std::setw(45) << pos << std::setw(40) << std::left << tri << std::setw(40) << tex << std::endl;
-
-		idx += 8;
-		idx2 += 3;
-		idx3 += 4;
-	}
-	*/
-
-	//Create a sphere
-	
+	//Create a sphere	
 	sphere.createSphere(radius, 20);
 
-
-
-	int flip = 0;
-
 	
-	/*updatePositionsEuler(fbo1_2, fbo2_2, fbo5, fbo4);
-	useFBO(0L, fbo1_2, 0L);
-	flip = 1;*/
-
-	// render loop
-	// -----------
+	/***** Render loop *****/
+	int flip = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 
 		// per-frame time logic
-		// --------------------
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
 		// input
-		// -----
 		processInput(window);
-
-
-		//Every other turn, ping pong to the other buffer, using Euler integration
-		/*if (flip == 0) {
-			updatePositionsEuler(fbo1_2, fbo2_2, fbo5, fbo4);
-			flip = 1;
-			useFBO(0L, fbo1_2, 0L);
-		}
-		else {
-			updatePositionsEuler(fbo2_2, fbo1_2, fbo4, fbo5);
-			flip = 0;
-			useFBO(0L, fbo2_2, 0L);
-		}*/
 
 		//ping pong with verlet
 		if (flip == 0) {
@@ -347,56 +202,42 @@ int main()
 		flip = 0;
 		}
 
-		/*** TEST: Apply a texture from fbo to fabric.***/
-		//Update the positions of the fabric
 		glEnable(GL_DEPTH_TEST);
+
+		// Create projection and view matrix to send to shader
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 view = camera.GetViewMatrix(); // camera/view transformation
+
+		// Draw sphere
 		sphereShader.use();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// pass projection matrix to shader (note that in this case it could change every frame)
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-		// camera/view transformation
-		glm::mat4 view = camera.GetViewMatrix();
 
-
-		// pass projection matrix to shader (note that in this case it could change every frame)
+		// pass projection matrix to the sphere shader
 		sphereShader.setMat4("projection", projection);
-
-		// camera/view transformation
 		sphereShader.setMat4("view", view);
 
-		glm::mat4 model2(1.0f);
-		//model2 = glm::rotate(model2, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		model2 = glm::translate(model2, glm::vec3(0.0f, -1.0f, 0.0f));
-		model2 = model2 * rot;
-		sphereShader.setMat4("model", model2);
+		glm::mat4 model(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
+		model = model * rot;
+		sphereShader.setMat4("model", model);
 
 		sphere.render();
 
+		// Draw the fabric
 		testShader.use();
 		glUniform1i(glGetUniformLocation(testShader.ID, "positionTexture"), 0);
 		glUniform1i(glGetUniformLocation(testShader.ID, "normalTexture"), 1);
 
-		
-		/*glClearColor(0.7f, 0.1f, 0.1f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-
-		
-
-
-
+		// Pass projection and modelview matrices to the fabric shader.
 		testShader.setMat4("projection", projection);
 		testShader.setMat4("view", view);
+		glm::mat4 model2(1.0f);
+		model2 = model2 * rot;
+		testShader.setMat4("model", model2);
 
-
-		glm::mat4 model(1.0f);
-		//model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-		model = model * rot;
-		
-		testShader.setMat4("model", model);
-
+		//Toggle between regular and wireframe mode using key 'T'
 		if (wireframe_mode) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			f.render();
@@ -406,41 +247,27 @@ int main()
 		{
 			f.render();
 		}
-		
-		///*useFBO(0L, fbo5, 0L);
-		//drawScreenQuad(plainShader);*/
 
-		
-
-		/*** TEST: draw only texture to screen***/
-		//updatePositionsVerlet(fbo1, fbo2, fbo3);
-		/*useFBO(0L, normalfbo, 0L);
-		drawScreenQuad(plainShader);
-*/
 		
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-		// -------------------------------------------------------------------------------
 		glDisable(GL_DEPTH_TEST);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
-
-	// optional: de-allocate all resources once they've outlived their purpose:
-	// ------------------------------------------------------------------------
-	/*glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);*/
+	glDeleteVertexArrays(1, &quadVAO);
+	glDeleteBuffers(1, &quadVBO);
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
-	// ------------------------------------------------------------------
 	// Close the OpenGL window and terminate GLFW.
 	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
 }
 
+/******* Function implementations ********/
 
-// generate texture
+// Generate float textures from generated data
 GLuint generateTextureFromData(GLfloat * data) {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
@@ -463,43 +290,21 @@ void drawTextureToFBO(FBOstruct *fbo, GLuint texture) {
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+// Draw to quad covering the screen
 void drawScreenQuad(Shader shader) {
 	shader.use();
 	glBindVertexArray(quadVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-
-//Here we do pingponging
-void updatePositionsEuler(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * vel1, FBOstruct * vel2) {
-
-	// 1. render position_texture1 to position_texture2, with velocity_texture1 as additional input.
-	positionShader.use();
-	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 0);
-	glUniform1i(glGetUniformLocation(positionShader.ID, "velocityTexture"), 1);
-
-	useFBO(pos2, pos1, vel1); //Render to fbo1, without any input
-	
-	drawScreenQuad(positionShader); //draw the texture
-
-	// 2. render velocity_texture1 to velocity_texture2, updating the velocity for the next pass.
-	//useFBO(fbo2, fb01, 0L);
-	velocityShader.use();
-	glUniform1i(glGetUniformLocation(velocityShader.ID, "oldVelocityTexture"), 0);
-	glUniform1i(glGetUniformLocation(velocityShader.ID, "positionTexture"), 1); // Need the positions to be able to update the velocity
-
-	useFBO(vel2, vel1, pos1);
-	drawScreenQuad(velocityShader);
-
-}
-
-
+//Update the position textures using Verlet integration
 void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3) {
-	// 1. render position_texture1 to position_texture2, with velocity_texture1 as additional input.
+	
+	// 1. Update pos1 with new positions using pos2(current positions) and pos3(old positions) as input
 	positionShader2.use();
 	glUniform1i(glGetUniformLocation(positionShader2.ID, "positionTexture"), 0);
 	glUniform1i(glGetUniformLocation(positionShader2.ID, "oldpositionTexture"), 1);
-	useFBO(pos1, pos2, pos3); //Render to fbo1, without any input
+	useFBO(pos1, pos2, pos3); //Render to pos1
 	drawScreenQuad(positionShader2); //draw the texture
 
 	// 2. update the fbo storing the old texture with the current texture
@@ -507,38 +312,27 @@ void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3)
 	useFBO(pos3, pos2, 0L);
 	drawScreenQuad(plainShader);
 
-	// 3. update the normals
-	/*normalShader.use();
-	glUniform1i(glGetUniformLocation(normalShader.ID, "positionTexture"), 0);
-	useFBO(normalfbo, pos1, 0L);
-	drawScreenQuad(normalShader);*/
-
-
-	//draw to screen
-	useFBO(0L, pos1, normalfbo);
+	//draw to screen, using the positions and stripe textures as input.
+	useFBO(0L, pos1, fbo4);
 }
 
 
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
+
+//Update world rotation matrix
 void updateRot(int dir) {
 	float timer = deltaTime * dir;
 	rot = glm::rotate(rot, glm::radians(timer * 100), glm::vec3(0.0f, 1.0f, 0.0f));
 
 }
 
-void moveSphere(int dir) {
-	float timer = deltaTime * dir;
-	rot = glm::rotate(rot, glm::radians(timer * 100), glm::vec3(0.0f, 1.0f, 0.0f));
-
-}
-
+// Process input from keyboard
 void processInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
-
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.ProcessKeyboard(FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -566,7 +360,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 // glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse)
@@ -586,7 +379,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 }
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
