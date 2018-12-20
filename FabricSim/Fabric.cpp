@@ -49,7 +49,7 @@ void Fabric::Create_Fabric()
 		for (int x = 0; x < num_particles_width; ++x) {
 
 			// Calculate the position of the new particle.
-			glm::vec3 position = glm::vec3(x * width / ((float)num_particles_width - 1) -0.5f,0.0f, y * height / ((float)num_particles_height - 1) - 0.5f);
+			glm::vec3 position = glm::vec3(x * width / ((float)num_particles_width - 1) -(width*0.5f) ,0.0f, y * height / ((float)num_particles_height - 1) - (height*0.5f));
 			
 			//Insert vertex positions
 			vertexarray[idx] = position.x;
@@ -269,7 +269,7 @@ void Fabric::Compute_Edge_Values(int x, int y, int idx)
 	}
 	
 	//Pinned particles
-	if (y == num_particles_height - 1) {
+	if ((x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)) {
 		//(x == 0 && y == num_particles_height - 1) || (x == num_particles_width - 1 && y == num_particles_height - 1)
 		positionarray[idx] = 5.0f;
 		velocityarray[idx] = 5.0f;

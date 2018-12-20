@@ -31,7 +31,7 @@ const unsigned int SCR_HEIGHT = 800;
 
 
 // camera
-Camera camera(glm::vec3(0.0f, -1.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, -1.0f, 4.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -67,10 +67,12 @@ GLuint quadVAO;
 
 
 /***** The size of the fabric in particles *****/
-float fabric_width = 1;
-float fabric_height = 1;
-GLsizei num_particles_width = 30;
-GLsizei num_particles_height = 30;
+float fabric_width = 2;
+float fabric_height = 2;
+GLsizei num_particles_width = 40;
+GLsizei num_particles_height = 40;
+
+bool wireframe_mode = false;
 
 
 /***** Sphere variables *******/
@@ -393,9 +395,16 @@ int main()
 		
 		testShader.setMat4("model", model);
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		f.render();
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		if (wireframe_mode) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			f.render();
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+		else
+		{
+			f.render();
+		}
+		
 		///*useFBO(0L, fbo5, 0L);
 		//drawScreenQuad(plainShader);*/
 
@@ -540,6 +549,9 @@ void processInput(GLFWwindow *window)
 		updateRot(-1);
 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 		updateRot(1);
+	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+		wireframe_mode = abs(wireframe_mode - 1);
+		
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
