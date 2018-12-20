@@ -34,7 +34,7 @@ float lastFrame = 0.0f;
 /***** Declare Framebuffer objects and shaders. ******/
 FBOstruct *fbo1, *fbo2, *fbo3, *fbo4;
 
-Shader plainShader, positionShader2, testShader, sphereShader;
+Shader plainShader, positionShader, fabricShader, sphereShader;
 
 
 /*** Screen quad ***/
@@ -127,22 +127,22 @@ int main()
 
 	/************** Create and compile shaders *****************/
 	plainShader.init("../shaders/plaintextureshader.vert", "../shaders/plaintextureshader.frag");
-	positionShader2.init("../shaders/position2.vert", "../shaders/position2.frag");
-	testShader.init("../shaders/testshader.vert", "../shaders/testshader.frag");
+	positionShader.init("../shaders/position.vert", "../shaders/position.frag");
+	fabricShader.init("../shaders/fabricshader.vert", "../shaders/fabricshader.frag");
 	sphereShader.init("../shaders/plain.vert", "../shaders/plain.frag");
 	
 	/************** Create Fabric and position textures *****************/
-	Fabric f{ fabric_width, fabric_height, num_particles_width, num_particles_height };
-	f.Set_Pinned(UpperCorners);
-	f.Create_Fabric();
+	Fabric fabric{ fabric_width, fabric_height, num_particles_width, num_particles_height };
+	fabric.Set_Pinned(None);
+	fabric.Create_Fabric();
 
 	// Create textures from the position data in Fabric.
-	GLuint position_texture1 = generateTextureFromData(f.positionarray);
-	GLuint position_texture2 = generateTextureFromData(f.positionarray);
-	GLuint position_texture3 = generateTextureFromData(f.positionarray);
+	GLuint position_texture1 = generateTextureFromData(fabric.positionarray);
+	GLuint position_texture2 = generateTextureFromData(fabric.positionarray);
+	GLuint position_texture3 = generateTextureFromData(fabric.positionarray);
 
 	//Create texture with stripes
-	GLuint checker_texture = generateTextureFromData(f.texturearray);
+	GLuint checker_texture = generateTextureFromData(fabric.texturearray);
 
 	/***** Pass texture offsets to position shader *******/
 	float offset_x = 1 / (float)num_particles_width;
@@ -156,10 +156,10 @@ int main()
 	glm::vec3 rest_distances(rest_dist_x, rest_dist_y, rest_dist_d);
 
 	//when using verlet, pass to position shader 2
-	positionShader2.use();
-	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_x"), offset_x);
-	glUniform1f(glGetUniformLocation(positionShader2.ID, "texture_offset_y"), offset_y);
-	glUniform3fv(glGetUniformLocation(positionShader2.ID, "rest_distances"), 1, glm::value_ptr(rest_distances));
+	positionShader.use();
+	glUniform1f(glGetUniformLocation(positionShader.ID, "texture_offset_x"), offset_x);
+	glUniform1f(glGetUniformLocation(positionShader.ID, "texture_offset_y"), offset_y);
+	glUniform3fv(glGetUniformLocation(positionShader.ID, "rest_distances"), 1, glm::value_ptr(rest_distances));
 
 	/*********** set up frame buffer objects *****************/
 	fbo1 = initFBO(SCR_WIDTH, SCR_HEIGHT, 0);
@@ -226,26 +226,26 @@ int main()
 		sphere.render();
 
 		// Draw the fabric
-		testShader.use();
-		glUniform1i(glGetUniformLocation(testShader.ID, "positionTexture"), 0);
-		glUniform1i(glGetUniformLocation(testShader.ID, "stripedTexture"), 1);
+		fabricShader.use();
+		glUniform1i(glGetUniformLocation(fabricShader.ID, "positionTexture"), 0);
+		glUniform1i(glGetUniformLocation(fabricShader.ID, "stripedTexture"), 1);
 
 		// Pass projection and modelview matrices to the fabric shader.
-		testShader.setMat4("projection", projection);
-		testShader.setMat4("view", view);
+		fabricShader.setMat4("projection", projection);
+		fabricShader.setMat4("view", view);
 		glm::mat4 model2(1.0f);
 		model2 = model2 * rot;
-		testShader.setMat4("model", model2);
+		fabricShader.setMat4("model", model2);
 
 		//Toggle between regular and wireframe mode using key 'T'
 		if (wireframe_mode) {
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			f.render();
+			fabric.render();
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 		else
 		{
-			f.render();
+			fabric.render();
 		}
 
 		
@@ -301,11 +301,11 @@ void drawScreenQuad(Shader shader) {
 void updatePositionsVerlet(FBOstruct * pos1, FBOstruct * pos2, FBOstruct * pos3) {
 	
 	// 1. Update pos1 with new positions using pos2(current positions) and pos3(old positions) as input
-	positionShader2.use();
-	glUniform1i(glGetUniformLocation(positionShader2.ID, "positionTexture"), 0);
-	glUniform1i(glGetUniformLocation(positionShader2.ID, "oldpositionTexture"), 1);
+	positionShader.use();
+	glUniform1i(glGetUniformLocation(positionShader.ID, "positionTexture"), 0);
+	glUniform1i(glGetUniformLocation(positionShader.ID, "oldpositionTexture"), 1);
 	useFBO(pos1, pos2, pos3); //Render to pos1
-	drawScreenQuad(positionShader2); //draw the texture
+	drawScreenQuad(positionShader); //draw the texture
 
 	// 2. update the fbo storing the old texture with the current texture
 	plainShader.use();

@@ -74,14 +74,20 @@ void Fabric::Create_Fabric()
 				texturearray[idx2 + 1] = 1.0f;
 				texturearray[idx2 + 2] = 1.0f;
 				texturearray[idx2 + 3] = 1.0f;
-				black = 1;
+				if ((num_particles_width % 2 != 0) && x == num_particles_width - 1)
+					black = 0;
+				else 
+					black = 1;
 			} 
 			else {
 				texturearray[idx2] = 0.0f;
 				texturearray[idx2 + 1] = 0.0f;
 				texturearray[idx2 + 2] = 0.0f;
 				texturearray[idx2 + 3] = 1.0f;
-				black = 0;
+				if ((num_particles_width % 2 != 0) && x == num_particles_width - 1)
+					black = 1;
+				else
+					black = 0;
 			}
 
 
