@@ -60,11 +60,16 @@ GLsizei num_particles_height = 50;
 
 bool wireframe_mode = false;
 
+GLuint position_texture1;
+GLuint position_texture2;
+GLuint position_texture3;
+
 
 /***** Sphere variables *******/
 float radius = 0.2f;
 glm::vec3 center(0.0f, 0.0f, 0.0f);
 Sphere sphere;
+bool hideSphere = false;
 
 
 /***** Function Declarations *****/
@@ -133,13 +138,16 @@ int main()
 	
 	/************** Create Fabric and position textures *****************/
 	Fabric fabric{ fabric_width, fabric_height, num_particles_width, num_particles_height };
-	fabric.Set_Pinned(None);
+	
+	// Use the Pinned enum in the Fabric class to set pinned points in the fabric
+	// Example: None, UpperCorners, UpperLeftCorner, AllCorners, UpperEdge, Diagonal etc
+	fabric.Set_Pinned(UpperLeftCorner);
 	fabric.Create_Fabric();
 
 	// Create textures from the position data in Fabric.
-	GLuint position_texture1 = generateTextureFromData(fabric.positionarray);
-	GLuint position_texture2 = generateTextureFromData(fabric.positionarray);
-	GLuint position_texture3 = generateTextureFromData(fabric.positionarray);
+	position_texture1 = generateTextureFromData(fabric.positionarray);
+	position_texture2 = generateTextureFromData(fabric.positionarray);
+	position_texture3 = generateTextureFromData(fabric.positionarray);
 
 	//Create texture with stripes
 	GLuint checker_texture = generateTextureFromData(fabric.texturearray);
@@ -192,6 +200,9 @@ int main()
 		// input
 		processInput(window);
 
+		positionShader.use();
+		glUniform1i(glGetUniformLocation(positionShader.ID, "hideSphere"), hideSphere);
+
 		//ping pong with verlet
 		if (flip == 0) {
 		updatePositionsVerlet(fbo1, fbo2, fbo3);
@@ -223,7 +234,10 @@ int main()
 		model = model * rot;
 		sphereShader.setMat4("model", model);
 
-		sphere.render();
+		if (!hideSphere) {
+			sphere.render();
+		}
+
 
 		// Draw the fabric
 		fabricShader.use();
@@ -351,7 +365,13 @@ void processInput(GLFWwindow *window)
 		updateRot(1);
 	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
 		wireframe_mode = abs(wireframe_mode - 1);
-		
+	if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+		hideSphere = abs(hideSphere - 1);
+	if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+		drawTextureToFBO(fbo1, position_texture1);
+		drawTextureToFBO(fbo2, position_texture2);
+		drawTextureToFBO(fbo3, position_texture3);
+	}	
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

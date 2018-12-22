@@ -16,6 +16,8 @@ uniform vec3 center = vec3(0.0, -1.0, 0.0);
 uniform float dt = 0.01;
 uniform float damping = -0.0125f; //default damping as per suggestion
 
+uniform bool hideSphere;
+
 /*** FUNCTION DECLARATIONS ***/
 //Calculate the internal force by accumulating the forces of the neighboring particles
 vec3 calculateInternalForces();
@@ -54,10 +56,13 @@ void main()
     vec3 pos = 2 * current_pos - old_pos + acceleration * dt * dt;
 
     //collision detection
-    vec3 dist_to_sphere = pos - center;
-    if(length(dist_to_sphere) <= radius + 0.015 ) {
-        pos = current_pos;
+    if(!hideSphere) {
+        vec3 dist_to_sphere = pos - center;
+        if(length(dist_to_sphere) <= radius + 0.015 ) {
+            pos = current_pos;
+        }
     }
+    
 
     //check if the point is pinned. If it is, do not move it
     if(pinned == 1.0) {
