@@ -42,11 +42,11 @@ void main()
 
     float mass = 0.1;
     vec3 gravity = vec3(0.0f, -0.981f, 0.0f); //simple gravitational pull
-    vec3 wind = vec3(0.0f, 0.0f, 0.9f);
+    vec3 wind = vec3(0.0f, 0.0f, 0.0f);
     
     F += gravity * mass + (current_speed * mass * damping); //Add default damping on momentum
 
-    vec3 acceleration = (F / mass);
+    vec3 acceleration = (F / mass) + wind;
 
     //Euler integration
     // vec3 speed = current_speed + acceleration * dt;
@@ -63,7 +63,6 @@ void main()
         }
     }
     
-
     //check if the point is pinned. If it is, do not move it
     if(pinned == 1.0) {
         pos = current_pos;
@@ -148,7 +147,6 @@ vec3 neighborForce(vec3 current_pos, vec3 current_speed, vec3 neighbor_pos, vec3
     vec3 speed_diff = current_speed - neighbor_speed; //speed difference between neighboring particles, used for damping
     
     float ks = 80.75, kd = -0.08f; //constants
-
 
     vec3 internal_force = -(ks * (length(dist) - r) + (kd * (dot(dist, speed_diff) / length(dist)))) * (dist / length(dist));
     //vec3 internal_force = vec3(0.4, 0.2, 0.7);

@@ -14,8 +14,8 @@
 
 
 /**** Settings ****/
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 800;
+const unsigned int SCR_WIDTH = 900;
+const unsigned int SCR_HEIGHT = 900;
 
 // camera
 Camera camera(glm::vec3(0.0f, -1.0f, 4.0f));
@@ -48,7 +48,6 @@ float quadVertices[] = { // vertex attributes for a quad that fills the entire s
 	1.0f, -1.0f,  1.0f, 0.0f,
 	1.0f,  1.0f,  1.0f, 1.0f
 };
-
 GLuint quadVAO;
 
 
@@ -59,6 +58,7 @@ GLsizei num_particles_width = 50;
 GLsizei num_particles_height = 50;
 
 bool wireframe_mode = false;
+Pinned pin = UpperCorners; // use this to change which parts of the fabric are pinned
 
 GLuint position_texture1;
 GLuint position_texture2;
@@ -141,7 +141,7 @@ int main()
 	
 	// Use the Pinned enum in the Fabric class to set pinned points in the fabric
 	// Example: None, UpperCorners, UpperLeftCorner, AllCorners, UpperEdge, Diagonal etc
-	fabric.Set_Pinned(UpperLeftCorner);
+	fabric.Set_Pinned(pin);
 	fabric.Create_Fabric();
 
 	// Create textures from the position data in Fabric.
@@ -248,6 +248,7 @@ int main()
 		fabricShader.setMat4("projection", projection);
 		fabricShader.setMat4("view", view);
 		glm::mat4 model2(1.0f);
+		model2 = glm::rotate(model2, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		model2 = model2 * rot;
 		fabricShader.setMat4("model", model2);
 
