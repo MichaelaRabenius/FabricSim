@@ -1,6 +1,6 @@
 # FabricSim
 
-A fabric simulation created as a project in the course TSBK03: Techniques for advanced video games at Linköping university.
+A fabric simulation created as a project in the course TSBK03: Advance Game Programming at Linköping university.
 
 Controls:
 Use WASD as well arrow keys to move/rotate the fabric around. Mouse can also be used for looking around.
